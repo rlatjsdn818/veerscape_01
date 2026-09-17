@@ -14,9 +14,14 @@ public class SFXManager : MonoBehaviour
     private AudioClip nearMissClip;
     private AudioClip deathClip;
 
+    // SFXManager.cs 수정 사항 (Awake 보완)
     void Awake()
     {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+
+        if (audioSource == null) audioSource = GetComponent<AudioSource>();
+        GenerateClips();
     }
 
     /// <summary>GameSetup에서 AudioSource 주입 후 초기화</summary>

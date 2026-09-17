@@ -1,29 +1,46 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 /// <summary>
-/// UI 관리: 타이틀 화면, 인게임 HUD, 게임 오버 패널.
-/// GameSetup에서 UI 요소 참조 주입.
+/// 인스펙터 바인딩 기반 UI 매니저 (TextMeshPro 지원)
 /// </summary>
 public class UIManager : MonoBehaviour
 {
-    // ── UI 요소 참조 (GameSetup에서 주입) ──
-    [HideInInspector] public Text distanceText;
-    [HideInInspector] public Text bestDistanceText;
-    [HideInInspector] public Text nearMissText;
-    [HideInInspector] public Text zoneChangeText;
-    [HideInInspector] public Text finalDistanceText;
-    [HideInInspector] public Text finalBestText;
-    [HideInInspector] public Button retryButton;
+    public static UIManager Instance { get; private set; }
 
-    [HideInInspector] public GameObject titlePanel;
-    [HideInInspector] public GameObject hudPanel;
-    [HideInInspector] public GameObject gameOverPanel;
+    [Header("Panels")]
+    public GameObject titlePanel;
+    public GameObject hudPanel;
+    public GameObject gameOverPanel;
+
+    [Header("HUD Elements")]
+    public TMP_Text distanceText;
+    public TMP_Text zoneChangeText;
+    public TMP_Text nearMissText;
+
+    [Header("Title Elements")]
+    public TMP_Text bestDistanceText;
+
+    [Header("Game Over Elements")]
+    public TMP_Text finalDistanceText;
+    public TMP_Text finalBestText;
+    public Button retryButton;
 
     private GameManager gm;
     private float nearMissDisplayTimer;
     private float zoneChangeTimer;
     private float titleShowTime;
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
 
     void Start()
     {
@@ -34,6 +51,11 @@ public class UIManager : MonoBehaviour
             gm.OnGameOver += ShowGameOver;
             gm.OnNearMiss += ShowNearMiss;
             gm.OnZoneChanged += ShowZoneChange;
+        }
+
+        if (retryButton != null)
+        {
+            retryButton.onClick.AddListener(OnRetryClicked);
         }
 
         ShowTitle();
@@ -85,23 +107,20 @@ public class UIManager : MonoBehaviour
             if (zoneChangeText != null)
             {
                 float alpha = Mathf.Clamp01(zoneChangeTimer / 0.5f);
-                zoneChangeText.color = new Color(1f, 1f, 1f, alpha);
+                zoneChangeText.color = new Color(zoneChangeText.color.r, zoneChangeText.color.g, zoneChangeText.color.b, alpha);
             }
             if (zoneChangeTimer <= 0f && zoneChangeText != null)
                 zoneChangeText.gameObject.SetActive(false);
         }
     }
 
-    // ── 패널 전환 ──
-
-    void ShowTitle()
+    public void ShowTitle()
     {
         if (titlePanel != null) titlePanel.SetActive(true);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (hudPanel != null) hudPanel.SetActive(false);
         titleShowTime = Time.time;
 
-        // 최고 기록 표시
         if (bestDistanceText != null && gm != null && gm.BestDistance > 0f)
             bestDistanceText.text = "BEST: " + Mathf.FloorToInt(gm.BestDistance) + "m";
         else if (bestDistanceText != null)
@@ -154,17 +173,14 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    /// <summary>Retry 버튼 클릭 핸들러</summary>
     public void OnRetryClicked()
     {
         if (gm == null) return;
         gm.RetryGame();
 
-        // 플레이어 비주얼 리셋
         var player = FindAnyObjectByType<PlayerController>();
         if (player != null) player.ResetVisual();
 
-        // 트레일 클리어
         var trail = FindAnyObjectByType<TrailController>();
         if (trail != null)
         {

@@ -22,6 +22,12 @@ public class TrailController : MonoBehaviour
         SetNormalColors();
     }
 
+    // TrailController.cs 수정 사항 (Awake 보완)
+    void Awake()
+    {
+        if (trail == null) trail = GetComponent<TrailRenderer>();
+    }
+
     void Start()
     {
         var gm = GameManager.Instance;

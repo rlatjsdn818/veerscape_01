@@ -2,30 +2,27 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// 거리 기반 난이도에 따라 장애물 패턴을 스폰합니다.
-/// 패턴: 단일, 복합(천장+바닥), 통로, 지그재그
+/// 에디터 프리팹 및 인스펙터 설정 기반 장애물 스포너
 /// </summary>
 public class ObstacleSpawner : MonoBehaviour
 {
+    [Header("Prefab Reference")]
+    [SerializeField] private GameObject obstaclePrefab;
+
     private GameManager gm;
     private float spawnTimer;
 
-    // 스폰 X 좌표 (화면 오른쪽 밖)
     private const float SPAWN_X = 12f;
     private const float TOP_BOUND = 4.5f;
     private const float BOTTOM_BOUND = -4.5f;
 
-    // Near Miss 영역 마진 (킬존 대비 확장 크기)
-    private const float NEAR_MISS_MARGIN = 1.0f;
-
-    // 구간별 장애물 색상
     private static readonly Dictionary<string, Color> zoneColors = new Dictionary<string, Color>
     {
-        { "BASIC",    new Color(0.9f, 0.3f, 0.3f) },   // 붉은색
-        { "SHIFT",    new Color(0.9f, 0.2f, 0.6f) },   // 마젠타
-        { "FRACTURE", new Color(0.6f, 0.2f, 0.9f) },   // 보라
-        { "DISTORT",  new Color(0.9f, 0.5f, 0.1f) },   // 오렌지
-        { "VOID",     new Color(0.9f, 0.1f, 0.1f) }    // 강렬한 빨강
+        { "BASIC",    new Color(0.9f, 0.3f, 0.3f) },
+        { "SHIFT",    new Color(0.9f, 0.2f, 0.6f) },
+        { "FRACTURE", new Color(0.6f, 0.2f, 0.9f) },
+        { "DISTORT",  new Color(0.9f, 0.5f, 0.1f) },
+        { "VOID",     new Color(0.9f, 0.1f, 0.1f) }
     };
 
     void Start()
@@ -47,7 +44,7 @@ public class ObstacleSpawner : MonoBehaviour
 
     void ResetSpawner()
     {
-        spawnTimer = 2.0f; // 시작 후 첫 장애물 등장 딜레이
+        spawnTimer = 2.0f;
     }
 
     void Update()
@@ -67,12 +64,11 @@ public class ObstacleSpawner : MonoBehaviour
     {
         var tier = DifficultyConfig.GetTier(gm.Distance);
 
-        // 사용 가능한 패턴 목록
-        List<int> patterns = new List<int> { 0 }; // 단일 항상 가능
+        List<int> patterns = new List<int> { 0 };
         if (tier.doubleObstacles) patterns.Add(1);
         if (tier.corridors) patterns.Add(2);
         if (tier.zigzag) patterns.Add(3);
-        if (tier.randomMix) patterns.Add(Random.Range(0, 4)); // 무작위 추가
+        if (tier.randomMix) patterns.Add(Random.Range(0, 4));
 
         int pick = patterns[Random.Range(0, patterns.Count)];
 
@@ -85,7 +81,6 @@ public class ObstacleSpawner : MonoBehaviour
         }
     }
 
-    // ── 패턴: 단일 장애물 ──
     void SpawnSingle(DifficultyConfig.TierData tier)
     {
         bool isTop = Random.value > 0.5f;
@@ -94,7 +89,6 @@ public class ObstacleSpawner : MonoBehaviour
         CreateObstacle(new Vector3(SPAWN_X, y, 0f), new Vector3(1.0f, height, 1.0f), tier.zoneName);
     }
 
-    // ── 패턴: 복합 (천장 + 바닥, 중앙 갭) ──
     void SpawnDouble(DifficultyConfig.TierData tier)
     {
         float gap = Random.Range(tier.gapSizeMin, tier.gapSizeMax);
@@ -111,7 +105,6 @@ public class ObstacleSpawner : MonoBehaviour
                            new Vector3(1.2f, botHeight, 1.0f), tier.zoneName);
     }
 
-    // ── 패턴: 통로 (연속 복합 장애물, 갭 위치 이동) ──
     void SpawnCorridor(DifficultyConfig.TierData tier)
     {
         int segments = Random.Range(3, 5);
@@ -122,7 +115,6 @@ public class ObstacleSpawner : MonoBehaviour
         {
             float x = SPAWN_X + i * 2.5f;
 
-            // 갭 위치를 조금씩 이동시켜 통로 형성
             gapCenter += Random.Range(-0.8f, 0.8f);
             gapCenter = Mathf.Clamp(gapCenter, BOTTOM_BOUND + gap / 2f + 0.5f, TOP_BOUND - gap / 2f - 0.5f);
 
@@ -138,7 +130,6 @@ public class ObstacleSpawner : MonoBehaviour
         }
     }
 
-    // ── 패턴: 지그재그 (교대 단일 장애물) ──
     void SpawnZigzag(DifficultyConfig.TierData tier)
     {
         int count = Random.Range(3, 6);
@@ -155,43 +146,28 @@ public class ObstacleSpawner : MonoBehaviour
         }
     }
 
-    // ── 장애물 오브젝트 생성 ──
     void CreateObstacle(Vector3 position, Vector3 scale, string zoneName)
     {
-        // --- 루트 (Near Miss 영역) ---
-        var root = new GameObject("Obstacle");
-        root.transform.position = position;
+        if (obstaclePrefab == null)
+        {
+            Debug.LogWarning("[ObstacleSpawner] obstaclePrefab이 할당되지 않았습니다. 인스펙터를 확인해주세요.");
+            return;
+        }
 
-        // Near Miss 외곽 트리거 콜라이더 (킬존보다 약간 큰)
-        var nearMissCol = root.AddComponent<BoxCollider2D>();
-        nearMissCol.isTrigger = true;
-        nearMissCol.size = new Vector2(scale.x + NEAR_MISS_MARGIN, scale.y + NEAR_MISS_MARGIN);
+        GameObject root = Instantiate(obstaclePrefab, position, Quaternion.identity);
+        root.transform.localScale = scale;
 
-        root.AddComponent<Obstacle>();
+        // 비주얼 스프라이트 색상 적용
+        var sr = root.GetComponentInChildren<SpriteRenderer>();
+        if (sr != null)
+        {
+            if (zoneColors.TryGetValue(zoneName, out Color color))
+                sr.color = color;
+            else
+                sr.color = Color.red;
+        }
 
-        // --- 킬존 (자식) ---
-        var killGO = new GameObject("KillZone");
-        killGO.transform.SetParent(root.transform, false);
-        var killCol = killGO.AddComponent<BoxCollider2D>();
-        killCol.isTrigger = true;
-        killCol.size = new Vector2(scale.x, scale.y);
-        killGO.AddComponent<ObstacleKillZone>();
-
-        // --- 비주얼 (자식) ---
-        var visual = new GameObject("Visual");
-        visual.transform.SetParent(root.transform, false);
-        visual.transform.localScale = scale;
-        
-        var sr = visual.AddComponent<SpriteRenderer>();
-        sr.sprite = VFXManager.SquareSprite;
-
-        // 구간별 색상 적용
-        Color color;
-        if (!zoneColors.TryGetValue(zoneName, out color))
-            color = Color.red;
-        sr.color = color;
-
-        // VOID(800m+) 구간에서는 30% 확률로 상하로 움직이는 장애물 생성
+        // VOID(800m+) 구간 이동 옵션 적용
         if (zoneName == "VOID" && Random.value < 0.3f)
         {
             var obs = root.GetComponent<Obstacle>();
