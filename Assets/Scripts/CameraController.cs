@@ -7,14 +7,29 @@ public class CameraController : MonoBehaviour
 {
     public static CameraController Instance { get; private set; }
 
-    private Vector3 originalPosition;
+    [Header("Zoom Settings")]
+    public float defaultOrthoSize = 5f;
+    public float nearMissZoomSize = 4.5f;
+    public float boostZoomSize = 5.5f;
+    public float zoomLerpSpeed = 5f;
+    public float baseScrollSpeed = 5f;
+
+    [Header("Shake Settings")]
+    public float nearMissShakeIntensity = 0.1f;
+    public float nearMissShakeDuration = 0.15f;
+    public float deathShakeIntensity = 0.3f;
+    public float deathShakeDuration = 0.3f;
+    public float shakeFrequency = 15f;
+
+    private Vector3 basePosition = new Vector3(0, 0, -10);
+    
+    private float currentShakeIntensity;
     private float shakeTimer;
-    private float shakeMagnitude;
+    private float targetOrthoSize;
+    private float nearMissZoomTimer;
+    private float initialShakeDuration;
 
     private Camera cam;
-    private float originalSize;
-    private float zoomTimer;
-    private float targetSize;
 
     void Awake()
     {
@@ -24,9 +39,13 @@ public class CameraController : MonoBehaviour
     void Start()
     {
         cam = GetComponent<Camera>();
-        originalPosition = transform.position;
-        originalSize = cam != null ? cam.orthographicSize : 5f;
-        targetSize = originalSize;
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
+
+        transform.position = basePosition;
+        targetOrthoSize = defaultOrthoSize;
 
         var gm = GameManager.Instance;
         if (gm != null)
@@ -48,62 +67,81 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    void Update()
+    {
+        HandleZoom();
+        HandleShake();
+    }
+
+    private void HandleZoom()
+    {
+        if (cam == null) return;
+
+        // Determine target ortho size
+        if (nearMissZoomTimer > 0)
+        {
+            targetOrthoSize = nearMissZoomSize;
+            nearMissZoomTimer -= Time.unscaledDeltaTime;
+        }
+        else if (GameManager.Instance != null && GameManager.Instance.CurrentScrollSpeed > baseScrollSpeed)
+        {
+            targetOrthoSize = boostZoomSize;
+        }
+        else
+        {
+            targetOrthoSize = defaultOrthoSize;
+        }
+
+        // Smooth transition to target size
+        cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, targetOrthoSize, Time.unscaledDeltaTime * zoomLerpSpeed);
+    }
+
+    private void HandleShake()
+    {
+        if (shakeTimer > 0)
+        {
+            shakeTimer -= Time.unscaledDeltaTime;
+
+            // Perlin noise shake based on unscaled time
+            float xNoise = Mathf.PerlinNoise(Time.unscaledTime * shakeFrequency, 0f) * 2f - 1f;
+            float yNoise = Mathf.PerlinNoise(0f, Time.unscaledTime * shakeFrequency) * 2f - 1f;
+
+            // Optional fade out
+            float fadeProgress = Mathf.Clamp01(shakeTimer / initialShakeDuration);
+            float actualIntensity = currentShakeIntensity * fadeProgress;
+
+            Vector3 shakeOffset = new Vector3(xNoise, yNoise, 0f) * actualIntensity;
+            transform.position = basePosition + shakeOffset;
+        }
+        else
+        {
+            transform.position = basePosition;
+        }
+    }
+
+    public void Shake(float intensity, float duration)
+    {
+        currentShakeIntensity = intensity;
+        shakeTimer = duration;
+        initialShakeDuration = duration;
+    }
+
     void HandleNearMiss(int combo)
     {
-        Shake(0.15f + combo * 0.05f, 0.15f);
-        // Near Miss 시 카메라 살짝 줌아웃 (시야 확보)
-        targetSize = originalSize + 0.5f;
-        zoomTimer = 0.5f;
+        Shake(nearMissShakeIntensity, nearMissShakeDuration);
+        nearMissZoomTimer = 0.5f; // Near Miss 줌
     }
 
     void HandleGameOver()
     {
-        Shake(0.4f, 0.3f);
+        Shake(deathShakeIntensity, deathShakeDuration);
     }
 
     void HandleGameStart()
     {
-        if (cam != null) cam.orthographicSize = originalSize;
-        targetSize = originalSize;
-        zoomTimer = 0f;
         shakeTimer = 0f;
-        transform.position = originalPosition;
-    }
-
-    public void Shake(float magnitude, float duration)
-    {
-        shakeMagnitude = magnitude;
-        shakeTimer = duration;
-    }
-
-    void Update()
-    {
-        // 카메라 쉐이크
-        if (shakeTimer > 0f)
-        {
-            shakeTimer -= Time.deltaTime;
-            float offsetX = Random.Range(-shakeMagnitude, shakeMagnitude);
-            float offsetY = Random.Range(-shakeMagnitude, shakeMagnitude);
-            transform.position = new Vector3(
-                originalPosition.x + offsetX,
-                originalPosition.y + offsetY,
-                originalPosition.z);
-        }
-        else
-        {
-            transform.position = originalPosition;
-        }
-
-        // 줌 효과
-        if (cam == null) return;
-        if (zoomTimer > 0f)
-        {
-            zoomTimer -= Time.deltaTime;
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, targetSize, Time.deltaTime * 5f);
-        }
-        else
-        {
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, originalSize, Time.deltaTime * 3f);
-        }
+        nearMissZoomTimer = 0f;
+        transform.position = basePosition;
+        if (cam != null) cam.orthographicSize = defaultOrthoSize;
     }
 }

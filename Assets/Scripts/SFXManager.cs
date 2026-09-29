@@ -22,6 +22,23 @@ public class SFXManager : MonoBehaviour
 
         if (audioSource == null) audioSource = GetComponent<AudioSource>();
         GenerateClips();
+
+        // Awake에서도 이벤트 구독 (GameSetup 없이도 작동하도록)
+        StartCoroutine(SubscribeEvents());
+    }
+
+    private System.Collections.IEnumerator SubscribeEvents()
+    {
+        // GameManager가 초기화될 때까지 1프레임 대기
+        yield return null;
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            gm.OnNearMiss -= HandleNearMiss; // 중복 방지
+            gm.OnGameOver -= HandleGameOver;
+            gm.OnNearMiss += HandleNearMiss;
+            gm.OnGameOver += HandleGameOver;
+        }
     }
 
     /// <summary>GameSetup에서 AudioSource 주입 후 초기화</summary>

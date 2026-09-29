@@ -57,6 +57,10 @@ public class NearMissSystem : MonoBehaviour
             {
                 obstacle.hasTriggeredNearMiss = true;
                 gm.TriggerNearMiss();
+
+                // Near Miss VFX 발동
+                if (VFXManager.Instance != null)
+                    VFXManager.Instance.SpawnNearMissEffect(transform.position);
             }
         }
     }

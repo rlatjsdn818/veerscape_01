@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System.Collections;
 
 /// <summary>
@@ -56,8 +57,9 @@ public class PlayerController : MonoBehaviour
     {
         if (gm == null || gm.CurrentState != GameManager.GameState.Playing || isDead) return;
 
-        // 클릭으로 방향 반전 (시작 직후 0.1초는 무시)
-        if (Input.GetMouseButtonDown(0) && Time.time - playStartTime > 0.1f)
+        // 클릭으로 방향 반전 (시작 직후 0.1초는 무시, UI 위 클릭도 무시)
+        if (Input.GetMouseButtonDown(0) && Time.time - playStartTime > 0.1f
+            && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
         {
             verticalDirection *= -1;
             if (SFXManager.Instance != null) SFXManager.Instance.PlayClick();
