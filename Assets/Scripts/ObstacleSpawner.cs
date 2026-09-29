@@ -54,13 +54,17 @@ public class ObstacleSpawner : MonoBehaviour
         spawnTimer -= Time.deltaTime;
         if (spawnTimer <= 0f)
         {
-            SpawnPattern();
+            // 스폰된 패턴의 가로 길이를 반환받음
+            float extraDistance = SpawnPattern();
             var tier = DifficultyConfig.GetTier(gm.Distance);
-            spawnTimer = Random.Range(tier.spawnIntervalMin, tier.spawnIntervalMax);
+            
+            // 패턴 너비(extraDistance)를 현재 속도로 나눈 '통과 소요 시간'을 쿨타임에 합산하여 겹침 방지
+            float speed = Mathf.Max(gm.CurrentScrollSpeed, 1f);
+            spawnTimer = Random.Range(tier.spawnIntervalMin, tier.spawnIntervalMax) + (extraDistance / speed);
         }
     }
 
-    void SpawnPattern()
+    float SpawnPattern()
     {
         var tier = DifficultyConfig.GetTier(gm.Distance);
 
@@ -74,22 +78,24 @@ public class ObstacleSpawner : MonoBehaviour
 
         switch (pick)
         {
-            case 0: SpawnSingle(tier); break;
-            case 1: SpawnDouble(tier); break;
-            case 2: SpawnCorridor(tier); break;
-            case 3: SpawnZigzag(tier); break;
+            case 0: return SpawnSingle(tier);
+            case 1: return SpawnDouble(tier);
+            case 2: return SpawnCorridor(tier);
+            case 3: return SpawnZigzag(tier);
         }
+        return 0f;
     }
 
-    void SpawnSingle(DifficultyConfig.TierData tier)
+    float SpawnSingle(DifficultyConfig.TierData tier)
     {
         bool isTop = Random.value > 0.5f;
         float height = Random.Range(tier.obstacleHeightMin, tier.obstacleHeightMax);
         float y = isTop ? TOP_BOUND - height / 2f : BOTTOM_BOUND + height / 2f;
         CreateObstacle(new Vector3(SPAWN_X, y, 0f), new Vector3(1.0f, height, 1.0f), tier.zoneName);
+        return 0f; // 단일 패턴은 추가 길이 없음
     }
 
-    void SpawnDouble(DifficultyConfig.TierData tier)
+    float SpawnDouble(DifficultyConfig.TierData tier)
     {
         float gap = Random.Range(tier.gapSizeMin, tier.gapSizeMax);
         float gapCenter = Random.Range(BOTTOM_BOUND + gap / 2f + 1f, TOP_BOUND - gap / 2f - 1f);
@@ -103,9 +109,10 @@ public class ObstacleSpawner : MonoBehaviour
         if (botHeight > 0.5f)
             CreateObstacle(new Vector3(SPAWN_X, BOTTOM_BOUND + botHeight / 2f, 0f),
                            new Vector3(1.2f, botHeight, 1.0f), tier.zoneName);
+        return 0f; // 더블 패턴은 추가 길이 없음
     }
 
-    void SpawnCorridor(DifficultyConfig.TierData tier)
+    float SpawnCorridor(DifficultyConfig.TierData tier)
     {
         int segments = Random.Range(3, 5);
         float gap = Random.Range(tier.gapSizeMin, tier.gapSizeMax);
@@ -128,9 +135,10 @@ public class ObstacleSpawner : MonoBehaviour
                 CreateObstacle(new Vector3(x, BOTTOM_BOUND + botH / 2f, 0f),
                                new Vector3(1.5f, botH, 1.0f), tier.zoneName);
         }
+        return (segments - 1) * 2.5f; // 생성된 복도 총 길이 반환
     }
 
-    void SpawnZigzag(DifficultyConfig.TierData tier)
+    float SpawnZigzag(DifficultyConfig.TierData tier)
     {
         int count = Random.Range(3, 6);
         bool isTop = Random.value > 0.5f;
@@ -144,6 +152,7 @@ public class ObstacleSpawner : MonoBehaviour
             CreateObstacle(new Vector3(x, y, 0f), new Vector3(1.0f, height, 1.0f), tier.zoneName);
             isTop = !isTop;
         }
+        return (count - 1) * 2.5f; // 생성된 지그재그 총 길이 반환
     }
 
     void CreateObstacle(Vector3 position, Vector3 scale, string zoneName)
