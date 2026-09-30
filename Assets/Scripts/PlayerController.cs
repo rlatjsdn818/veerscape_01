@@ -16,6 +16,10 @@ public class PlayerController : MonoBehaviour
     public float topBound = 4.2f;
     public float bottomBound = -4.2f;
 
+    [Header("Visual")]
+    [Tooltip("플레이어의 기본 크기. PNG 스프라이트에 맞게 조절하세요.")]
+    public Vector3 normalScale = Vector3.one * 0.6f;
+
     private bool isDead = false;
     private GameManager gm;
     private float playStartTime;
@@ -44,7 +48,7 @@ public class PlayerController : MonoBehaviour
         isDead = false;
         transform.position = new Vector3(-6f, 0f, 0f);
         verticalDirection = 1;
-        transform.localScale = Vector3.one * 0.6f;
+        transform.localScale = normalScale;
         playStartTime = Time.time;
     }
 
@@ -101,16 +105,16 @@ public class PlayerController : MonoBehaviour
     {
         float duration = 0.1f;
         float elapsed = 0f;
-        Vector3 squashed = new Vector3(0.8f, 0.4f, 0.8f);
-        Vector3 normal = Vector3.one * 0.6f;
+        // normalScale 기준으로 찌그러지는 비율 적용
+        Vector3 squashed = new Vector3(normalScale.x * 1.33f, normalScale.y * 0.67f, normalScale.z);
 
         while (elapsed < duration)
         {
-            transform.localScale = Vector3.Lerp(squashed, normal, elapsed / duration);
+            transform.localScale = Vector3.Lerp(squashed, normalScale, elapsed / duration);
             elapsed += Time.deltaTime;
             yield return null;
         }
-        transform.localScale = normal;
+        transform.localScale = normalScale;
     }
 
     void OnTriggerEnter2D(Collider2D other)
