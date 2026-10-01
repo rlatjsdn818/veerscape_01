@@ -9,6 +9,7 @@ public class VFXManager : MonoBehaviour
 
     [Header("Particle System Prefabs")]
     public ParticleSystem bounceEffectPrefab;
+    public ParticleSystem clickEffectPrefab;
     public ParticleSystem nearMissEffectPrefab;
     public ParticleSystem deathEffectPrefab;
 
@@ -25,6 +26,11 @@ public class VFXManager : MonoBehaviour
     public void SpawnBounceEffect(Vector3 position)
     {
         PlayParticle(bounceEffectPrefab, position);
+    }
+
+    public void SpawnClickEffect(Vector3 position)
+    {
+        PlayParticle(clickEffectPrefab, position);
     }
 
     public void SpawnNearMissEffect(Vector3 position)

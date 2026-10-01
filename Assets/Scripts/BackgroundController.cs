@@ -19,9 +19,6 @@ public class BackgroundController : MonoBehaviour
     public float colorTransitionSpeed = 1f;
     private Color currentColor;
     private Color targetColor;
-    
-    private SpriteRenderer topBoundary;
-    private SpriteRenderer bottomBoundary;
 
     // Optional Ambient Particles
     private ParticleSystem ambientParticles;
@@ -29,7 +26,6 @@ public class BackgroundController : MonoBehaviour
     private void Awake()
     {
         CreateProceduralAssets();
-        CreateBoundaryLines();
         CreateAmbientParticles();
 
         SetZoneColor("BASIC");
@@ -89,23 +85,6 @@ public class BackgroundController : MonoBehaviour
         whiteSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
     }
 
-    private void CreateBoundaryLines()
-    {
-        topBoundary = CreateLine(new Vector2(0, topY), new Vector2(30f, 0.05f));
-        bottomBoundary = CreateLine(new Vector2(0, bottomY), new Vector2(30f, 0.05f));
-    }
-
-    private SpriteRenderer CreateLine(Vector2 position, Vector2 scale)
-    {
-        GameObject go = new GameObject("Line");
-        go.transform.SetParent(transform);
-        go.transform.position = position;
-        go.transform.localScale = scale;
-        
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = whiteSprite;
-        return sr;
-    }
     
     private void CreateAmbientParticles()
     {
@@ -187,11 +166,6 @@ public class BackgroundController : MonoBehaviour
 
     private void UpdateColors()
     {
-        Color boundaryColor = currentColor;
-        boundaryColor.a = 0.8f;
-        if (topBoundary != null) topBoundary.color = boundaryColor;
-        if (bottomBoundary != null) bottomBoundary.color = boundaryColor;
-        
         Color gridColor = currentColor;
         gridColor.a = 0.08f;
         for (int i = 0; i < gridLines.Count; i++)
