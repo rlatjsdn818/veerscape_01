@@ -67,6 +67,7 @@ public class PlayerController : MonoBehaviour
         {
             verticalDirection *= -1;
             if (SFXManager.Instance != null) SFXManager.Instance.PlayClick();
+            if (VFXManager.Instance != null) VFXManager.Instance.SpawnClickEffect(transform.position);
         }
 
         // 난이도에 따른 수직 속도

@@ -1,0 +1,58 @@
+📝 [최종] 유니티 에디터 수동 세팅 마스터 가이드
+1. 매니저(Managers) 오브젝트 세팅
+
+하이어라키에 빈 게임 오브젝트(예: Managers)를 하나 만들고, 다음 스크립트들을 컴포넌트로 추가한 뒤 빈칸을 채워줍니다.
+
+GameManager.cs
+(연결할 항목 없음. 추가만 해두면 알아서 작동합니다.)
+UIManager.cs
+Title Panel, HUD Panel, Game Over Panel : UI 캔버스에 만들어둔 패널들 할당
+Distance Text, Zone Change Text, Near Miss Text : 게임 플레이 중 보여질 TMP 텍스트들 할당
+Best Distance Text, Final Distance Text, Final Best Text : 결과/타이틀 화면의 TMP 텍스트들 할당
+Retry Button : 재시작 버튼 할당
+ObstacleSpawner.cs
+Obstacle Prefab : 프로젝트 창에서 직접 조립해둔 장애물 프리팹을 드래그 앤 드롭
+SFXManager.cs
+⚠️ 필수: Add Component로 Audio Source를 직접 추가해 주세요.
+Bounce Clip, Click Clip, Near Miss Clip, Death Clip : 준비한 4가지 소리 파일(MP3, WAV)을 각각 할당
+VFXManager.cs
+Bounce Effect, Click Effect, Near Miss Effect, Death Effect : 준비한 4가지 파티클 프리팹을 각각 할당
+2. 플레이어(Player) 세팅 (PNG 기반)
+
+하이어라키로 플레이어로 쓸 PNG 이미지를 드래그 앤 드롭하여 오브젝트를 생성하고 다음을 세팅합니다.
+
+필수 컴포넌트 부착 (Add Component)
+Rigidbody2D : Body Type을 Kinematic으로 변경 (또는 Gravity Scale을 0으로)
+BoxCollider2D (또는 Polygon/Circle) : 이미지 픽셀 크기에 맞게 조절 (Is Trigger 체크)
+Trail Renderer : 궤적 효과용 (선의 두께, 사라지는 시간, Material 등 취향껏 설정)
+스크립트 부착 및 설정
+PlayerController.cs : Vertical Speed(상하 속도), Top/Bottom Bound(천장/바닥 한계선, 기본 4.2 / -4.2) 등을 설정
+NearMissSystem.cs : 아슬아슬한 회피 판정용 (설정할 항목 없음)
+TrailController.cs : 궤적 색상 변환용 (설정할 항목 없음)
+3. 장애물(Obstacle) 프리팹 세팅
+
+씬에서 다음 구조로 만든 뒤 프로젝트 창으로 드래그해 프리팹으로 만듭니다.
+
+부모 오브젝트 (가장 바깥쪽, Near Miss 감지 영역)
+Obstacle.cs 스크립트 부착
+BoxCollider2D 부착 및 Is Trigger 체크 (스쳐 지나가는 판정을 위해 넉넉한 크기로 박스 설정)
+자식 오브젝트 (실제 사망 충돌 영역 + 외형)
+ObstacleKillZone.cs 스크립트 부착
+BoxCollider2D 부착 및 Is Trigger 체크 (플레이어가 닿으면 죽는 실제 크기로 박스 설정)
+SpriteRenderer 부착 (장애물 이미지 할당)
+4. 바닥/천장(Boundaries) 및 배경 세팅
+
+코드로 자동 생성되던 선을 지웠으므로, 시각적인 바닥과 천장을 직접 꾸밉니다.
+
+천장(Ceiling)과 바닥(Floor) 오브젝트 생성
+바닥/천장용 이미지를 씬에 배치하고 좌우로 길게(Scale X) 늘려줍니다.
+천장 Y 좌표: 플레이어의 Top Bound 값(기본 4.2)과 똑같이 맞춥니다.
+바닥 Y 좌표: 플레이어의 Bottom Bound 값(기본 -4.2)과 똑같이 맞춥니다.
+(선택) 배경처럼 움직이게 하려면 ParallaxLayer.cs를 붙이고 Speed Multiplier를 1로 둡니다.
+배경 (Background)
+빈 오브젝트에 BackgroundController.cs 부착 (그리드 라인 등 이펙트 자동 생성)
+카메라 (Main Camera)
+CameraController.cs 부착 (화면 줌/쉐이크 수치 조절)
+PostProcessController.cs 부착 (볼륨 왜곡 효과용)
+
+나중에 유니티를 켜시고 이 리스트를 보면서 하나씩 조립하시면, 코딩(GameSetup)이 간섭하지 않는 유니티 에디터 본연의 쾌적한 환경에서 완벽하게 동작하는 게임을 보실 수 있을 것입니다! 👍
