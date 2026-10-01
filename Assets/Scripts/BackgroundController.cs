@@ -33,7 +33,9 @@ public class BackgroundController : MonoBehaviour
         UpdateColors();
         
         // Pre-warm grid lines
-        for (float x = destroyX; x <= spawnX; x += lineSpacing)
+        float startX = Camera.main != null ? Camera.main.transform.position.x - 15f : -15f;
+        float endX = Camera.main != null ? Camera.main.transform.position.x + 20f : 20f;
+        for (float x = startX; x <= endX; x += lineSpacing)
         {
             SpawnVerticalLineAt(x);
         }
@@ -71,7 +73,9 @@ public class BackgroundController : MonoBehaviour
         currentColor = targetColor;
         UpdateColors();
 
-        for (float x = destroyX; x <= spawnX; x += lineSpacing)
+        float startX = Camera.main != null ? Camera.main.transform.position.x - 15f : -15f;
+        float endX = Camera.main != null ? Camera.main.transform.position.x + 20f : 20f;
+        for (float x = startX; x <= endX; x += lineSpacing)
         {
             SpawnVerticalLineAt(x);
         }
@@ -85,7 +89,19 @@ public class BackgroundController : MonoBehaviour
         whiteSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
     }
 
-    
+    private SpriteRenderer CreateLine(Vector2 position, Vector2 size)
+    {
+        GameObject lineObj = new GameObject("GridLine");
+        lineObj.transform.SetParent(transform);
+        lineObj.transform.position = position;
+        lineObj.transform.localScale = new Vector3(size.x, size.y, 1f);
+
+        SpriteRenderer sr = lineObj.AddComponent<SpriteRenderer>();
+        sr.sprite = whiteSprite;
+        sr.sortingOrder = -100;
+        return sr;
+    }
+
     private void CreateAmbientParticles()
     {
         GameObject psObj = new GameObject("AmbientParticles");
@@ -135,6 +151,11 @@ public class BackgroundController : MonoBehaviour
 
     private void Update()
     {
+        if (ambientParticles != null && Camera.main != null)
+        {
+            ambientParticles.transform.position = new Vector3(Camera.main.transform.position.x, 0, 0);
+        }
+        
         UpdateColorTransition();
         
         // We'll safely check if GameManager exists and if state is Playing
@@ -187,6 +208,7 @@ public class BackgroundController : MonoBehaviour
 
     private void ScrollLines(float speed)
     {
+        float camX = Camera.main != null ? Camera.main.transform.position.x : 0f;
         for (int i = gridLines.Count - 1; i >= 0; i--)
         {
             Transform line = gridLines[i];
@@ -196,9 +218,9 @@ public class BackgroundController : MonoBehaviour
                 continue;
             }
             
-            line.position += Vector3.left * speed * Time.deltaTime;
-            
-            if (line.position.x < destroyX)
+            // 더 이상 왼쪽으로 이동하지 않습니다 (플레이어가 앞으로 이동하므로)
+            // 카메라보다 훨씬 뒤처지면 삭제
+            if (line.position.x < camX - 15f)
             {
                 Destroy(line.gameObject);
                 gridLines.RemoveAt(i);
@@ -211,7 +233,8 @@ public class BackgroundController : MonoBehaviour
         distanceSinceLastSpawn += speed * Time.deltaTime;
         if (distanceSinceLastSpawn >= lineSpacing)
         {
-            SpawnVerticalLineAt(spawnX);
+            float camX = Camera.main != null ? Camera.main.transform.position.x : 0f;
+            SpawnVerticalLineAt(camX + 20f);
             distanceSinceLastSpawn -= lineSpacing;
         }
     }
@@ -229,19 +252,23 @@ public class BackgroundController : MonoBehaviour
     {
         if (ambientParticles != null)
         {
-            // Move particles to simulate scrolling
+            // Particles don't need to manually move if simulation space is World,
+            // but if we want a parallax effect against the moving camera,
+            // we can slightly move them right so they appear to move slower than the background.
             ParticleSystem.Particle[] particles = new ParticleSystem.Particle[ambientParticles.main.maxParticles];
             int numParticlesAlive = ambientParticles.GetParticles(particles);
             
+            float camX = Camera.main != null ? Camera.main.transform.position.x : 0f;
+            
             for (int i = 0; i < numParticlesAlive; i++)
             {
-                particles[i].position += Vector3.left * (speed * 0.5f) * Time.deltaTime; // Parallax effect
+                particles[i].position += Vector3.right * (speed * 0.5f) * Time.deltaTime; // Parallax effect
                 
-                // Wrap particles
-                if (particles[i].position.x < destroyX)
+                // Wrap particles ahead if they fall too far behind
+                if (particles[i].position.x < camX - 15f)
                 {
                     Vector3 pos = particles[i].position;
-                    pos.x += (spawnX - destroyX);
+                    pos.x += 35f;
                     particles[i].position = pos;
                 }
             }

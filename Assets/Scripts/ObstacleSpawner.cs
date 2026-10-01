@@ -12,7 +12,10 @@ public class ObstacleSpawner : MonoBehaviour
     private GameManager gm;
     private float spawnTimer;
 
-    private const float SPAWN_X = 12f;
+    private float SPAWN_X
+    {
+        get { return Camera.main != null ? Camera.main.transform.position.x + 20f : 15f; }
+    }
     private const float TOP_BOUND = 4.5f;
     private const float BOTTOM_BOUND = -4.5f;
 

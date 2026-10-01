@@ -67,8 +67,21 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    private Transform target;
+
     void Update()
     {
+        if (target == null)
+        {
+            var p = FindObjectOfType<PlayerController>();
+            if (p != null) target = p.transform;
+        }
+        else
+        {
+            // 플레이어가 -6에서 시작하므로, 카메라가 0에서 시작하도록 offset을 +6 둡니다.
+            basePosition = new Vector3(target.position.x + 6f, 0, -10f);
+        }
+
         HandleZoom();
         HandleShake();
     }

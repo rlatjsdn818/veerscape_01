@@ -19,9 +19,22 @@ using UnityEngine;
 [RequireComponent(typeof(SpriteRenderer))]
 public class ParallaxLayer : MonoBehaviour
 {
+    public enum LayerDepth
+    {
+        Custom,
+        Layer1_Foreground, // 앞쪽 (빠름)
+        Layer2_Midground,  // 중간
+        Layer3_Background, // 뒤쪽 (느림)
+        Layer4_Sky         // 하늘 (카메라와 똑같이 이동)
+    }
+
+    [Header("Easy Layer Setup")]
+    [Tooltip("원하는 층수를 선택하면 속도와 렌더링 순서가 자동으로 세팅됩니다.")]
+    public LayerDepth presetLayer = LayerDepth.Custom;
+
     [Header("Parallax Settings")]
     [Tooltip("스크롤 속도 배율. 0에 가까울수록 먼 배경(느림), 1에 가까울수록 가까운 배경(빠름)")]
-    [Range(0.01f, 1.5f)]
+    [Range(0.0f, 1.5f)]
     public float speedMultiplier = 0.5f;
 
     [Header("Title Screen")]
@@ -31,9 +44,12 @@ public class ParallaxLayer : MonoBehaviour
     [Tooltip("타이틀 화면에서의 기본 스크롤 속도")]
     public float titleScrollSpeed = 2f;
 
-    [Header("Sorting")]
+    [Header("Sorting & Tuning")]
     [Tooltip("Sorting Order를 직접 지정합니다. 낮을수록 뒤에 그려집니다 (예: -10)")]
     public int sortingOrder = -5;
+    
+    [Tooltip("타일 사이에 미세한 틈(Gap)이 보인다면 이 값을 약간 올려주세요 (예: 0.02)")]
+    public float overlapCorrection = 0.02f;
 
     private SpriteRenderer sr;
     private float spriteWidth;
@@ -41,6 +57,33 @@ public class ParallaxLayer : MonoBehaviour
     // 타일링을 위한 복제본
     private Transform tileA;
     private Transform tileB;
+
+    void OnValidate()
+    {
+        // 프리셋을 선택하면 자동으로 값 세팅
+        if (presetLayer != LayerDepth.Custom)
+        {
+            switch (presetLayer)
+            {
+                case LayerDepth.Layer1_Foreground:
+                    speedMultiplier = 0.8f;
+                    sortingOrder = -1;
+                    break;
+                case LayerDepth.Layer2_Midground:
+                    speedMultiplier = 0.5f;
+                    sortingOrder = -2;
+                    break;
+                case LayerDepth.Layer3_Background:
+                    speedMultiplier = 0.2f;
+                    sortingOrder = -3;
+                    break;
+                case LayerDepth.Layer4_Sky:
+                    speedMultiplier = 0.0f; // 카메라와 완전 동일한 속도
+                    sortingOrder = -5;
+                    break;
+            }
+        }
+    }
 
     void Awake()
     {
@@ -54,8 +97,8 @@ public class ParallaxLayer : MonoBehaviour
             return;
         }
 
-        // 스프라이트의 월드 기준 가로 길이 계산
-        spriteWidth = sr.sprite.bounds.size.x * transform.localScale.x;
+        // 스프라이트의 월드 기준 가로 길이 계산 (미세한 틈새 보정 적용)
+        spriteWidth = (sr.sprite.bounds.size.x * transform.localScale.x) - overlapCorrection;
 
         SetupTiling();
     }
@@ -95,14 +138,18 @@ public class ParallaxLayer : MonoBehaviour
         float scrollSpeed = GetCurrentScrollSpeed();
         if (scrollSpeed <= 0f) return;
 
-        float moveAmount = scrollSpeed * speedMultiplier * Time.deltaTime;
+        float camX = Camera.main != null ? Camera.main.transform.position.x : 0f;
 
-        // 두 타일 모두 왼쪽으로 이동
-        tileA.position += Vector3.left * moveAmount;
-        tileB.position += Vector3.left * moveAmount;
+        // 전진형 패러다임: 
+        // speedMultiplier가 1(가까움, 바닥)이면 안 움직임 (0) -> 카메라가 지나가면서 타일링됨
+        // speedMultiplier가 0(멀음, 하늘)이면 카메라 속도와 동일하게 이동 -> 카메라를 완벽히 따라다님
+        float moveAmount = scrollSpeed * (1f - speedMultiplier) * Time.deltaTime;
 
-        // 화면 왼쪽 밖으로 나간 타일을 오른쪽 끝으로 순환
-        if (tileA.position.x <= -spriteWidth)
+        tileA.position += Vector3.right * moveAmount;
+        tileB.position += Vector3.right * moveAmount;
+
+        // 카메라 왼쪽으로 완전히 벗어난 타일을 오른쪽으로 이동
+        if (tileA.position.x < camX - spriteWidth)
         {
             tileA.position = new Vector3(
                 tileB.position.x + spriteWidth,
@@ -111,7 +158,7 @@ public class ParallaxLayer : MonoBehaviour
             );
         }
 
-        if (tileB.position.x <= -spriteWidth)
+        if (tileB.position.x < camX - spriteWidth)
         {
             tileB.position = new Vector3(
                 tileA.position.x + spriteWidth,

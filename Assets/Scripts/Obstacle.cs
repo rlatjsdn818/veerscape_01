@@ -39,15 +39,18 @@ public class Obstacle : MonoBehaviour
             moveY = Mathf.Sin(Time.time * movingFrequency) * movingAmplitude;
         }
 
-        // 왼쪽으로 스크롤 + 상하 진동
-        transform.position = new Vector3(
-            transform.position.x - gm.CurrentScrollSpeed * Time.deltaTime,
-            isMoving ? startY + moveY : transform.position.y,
-            transform.position.z
-        );
+        // 상하 진동만 적용
+        if (isMoving)
+        {
+            transform.position = new Vector3(
+                transform.position.x,
+                startY + moveY,
+                transform.position.z
+            );
+        }
 
-        // 화면 밖이면 제거
-        if (transform.position.x < DESTROY_X)
+        // 화면 밖이면 제거 (카메라 기준)
+        if (Camera.main != null && transform.position.x < Camera.main.transform.position.x - 15f)
         {
             Destroy(gameObject);
         }

@@ -74,6 +74,9 @@ public class PlayerController : MonoBehaviour
         var tier = DifficultyConfig.GetTier(gm.Distance);
         verticalSpeed = tier.verticalSpeed;
 
+        // X축 앞으로 이동
+        float newX = transform.position.x + gm.CurrentScrollSpeed * Time.deltaTime;
+
         // 수직 이동
         float newY = transform.position.y + verticalDirection * verticalSpeed * Time.deltaTime;
 
@@ -82,16 +85,16 @@ public class PlayerController : MonoBehaviour
         {
             newY = topBound;
             verticalDirection = -1;
-            OnBounce(new Vector3(transform.position.x, topBound, 0f));
+            OnBounce(new Vector3(newX, topBound, 0f));
         }
         else if (newY <= bottomBound)
         {
             newY = bottomBound;
             verticalDirection = 1;
-            OnBounce(new Vector3(transform.position.x, bottomBound, 0f));
+            OnBounce(new Vector3(newX, bottomBound, 0f));
         }
 
-        transform.position = new Vector3(transform.position.x, newY, 0f);
+        transform.position = new Vector3(newX, newY, 0f);
     }
 
     void OnBounce(Vector3 bouncePos)
