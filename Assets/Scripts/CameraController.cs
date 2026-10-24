@@ -1,35 +1,39 @@
 using UnityEngine;
 
 /// <summary>
-/// 카메라 쉐이크 및 Near Miss 줌 효과 제어.
+/// 카메라 제어:
+/// - 플레이어 위치 추적 (X축 오프셋 +6)
+/// - 장애물 회피(Near Miss) 시 화면 줌 대신 일관되고 가벼운 쉐이크(Shake) 효과만 발생
+/// - 게임 오버 시 사망 쉐이크
 /// </summary>
 public class CameraController : MonoBehaviour
 {
     public static CameraController Instance { get; private set; }
 
-    [Header("Zoom Settings")]
+    [Header("Camera Settings")]
+    [Tooltip("기본 카메라 시야 크기 (고정)")]
     public float defaultOrthoSize = 5f;
-    public float nearMissZoomSize = 4.5f;
-    public float boostZoomSize = 5.5f;
-    public float zoomLerpSpeed = 5f;
-    public float baseScrollSpeed = 5f;
 
     [Header("Shake Settings")]
-    public float nearMissShakeIntensity = 0.1f;
-    public float nearMissShakeDuration = 0.15f;
+    [Tooltip("장애물(가시/톱니바퀴) Near Miss 시 가벼운 쉐이크 강도")]
+    public float nearMissShakeIntensity = 0.08f;
+    [Tooltip("Near Miss 쉐이크 지속 시간 (초)")]
+    public float nearMissShakeDuration = 0.12f;
+
+    [Tooltip("사망 시 쉐이크 강도")]
     public float deathShakeIntensity = 0.3f;
+    [Tooltip("사망 쉐이크 지속 시간 (초)")]
     public float deathShakeDuration = 0.3f;
-    public float shakeFrequency = 15f;
+    public float shakeFrequency = 18f;
 
     private Vector3 basePosition = new Vector3(0, 0, -10);
     
     private float currentShakeIntensity;
     private float shakeTimer;
-    private float targetOrthoSize;
-    private float nearMissZoomTimer;
     private float initialShakeDuration;
 
     private Camera cam;
+    private Transform target;
 
     void Awake()
     {
@@ -39,13 +43,10 @@ public class CameraController : MonoBehaviour
     void Start()
     {
         cam = GetComponent<Camera>();
-        if (cam == null)
-        {
-            cam = Camera.main;
-        }
+        if (cam == null) cam = Camera.main;
 
         transform.position = basePosition;
-        targetOrthoSize = defaultOrthoSize;
+        if (cam != null) cam.orthographicSize = defaultOrthoSize;
 
         var gm = GameManager.Instance;
         if (gm != null)
@@ -67,8 +68,6 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    private Transform target;
-
     void Update()
     {
         if (target == null)
@@ -78,35 +77,10 @@ public class CameraController : MonoBehaviour
         }
         else
         {
-            // 플레이어가 -6에서 시작하므로, 카메라가 0에서 시작하도록 offset을 +6 둡니다.
             basePosition = new Vector3(target.position.x + 6f, 0, -10f);
         }
 
-        HandleZoom();
         HandleShake();
-    }
-
-    private void HandleZoom()
-    {
-        if (cam == null) return;
-
-        // Determine target ortho size
-        if (nearMissZoomTimer > 0)
-        {
-            targetOrthoSize = nearMissZoomSize;
-            nearMissZoomTimer -= Time.unscaledDeltaTime;
-        }
-        else if (GameManager.Instance != null && GameManager.Instance.CurrentScrollSpeed > baseScrollSpeed)
-        {
-            targetOrthoSize = boostZoomSize;
-        }
-        else
-        {
-            targetOrthoSize = defaultOrthoSize;
-        }
-
-        // Smooth transition to target size
-        cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, targetOrthoSize, Time.unscaledDeltaTime * zoomLerpSpeed);
     }
 
     private void HandleShake()
@@ -115,12 +89,10 @@ public class CameraController : MonoBehaviour
         {
             shakeTimer -= Time.unscaledDeltaTime;
 
-            // Perlin noise shake based on unscaled time
             float xNoise = Mathf.PerlinNoise(Time.unscaledTime * shakeFrequency, 0f) * 2f - 1f;
             float yNoise = Mathf.PerlinNoise(0f, Time.unscaledTime * shakeFrequency) * 2f - 1f;
 
-            // Optional fade out
-            float fadeProgress = Mathf.Clamp01(shakeTimer / initialShakeDuration);
+            float fadeProgress = Mathf.Clamp01(shakeTimer / Mathf.Max(0.001f, initialShakeDuration));
             float actualIntensity = currentShakeIntensity * fadeProgress;
 
             Vector3 shakeOffset = new Vector3(xNoise, yNoise, 0f) * actualIntensity;
@@ -141,8 +113,8 @@ public class CameraController : MonoBehaviour
 
     void HandleNearMiss(int combo)
     {
+        // 화면 확대(줌) 효과를 완전히 제거하고, 가볍고 경쾌한 쉐이크만 발생
         Shake(nearMissShakeIntensity, nearMissShakeDuration);
-        nearMissZoomTimer = 0.5f; // Near Miss 줌
     }
 
     void HandleGameOver()
@@ -153,7 +125,6 @@ public class CameraController : MonoBehaviour
     void HandleGameStart()
     {
         shakeTimer = 0f;
-        nearMissZoomTimer = 0f;
         transform.position = basePosition;
         if (cam != null) cam.orthographicSize = defaultOrthoSize;
     }

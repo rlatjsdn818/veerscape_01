@@ -37,13 +37,6 @@ public class ParallaxLayer : MonoBehaviour
     [Range(0.0f, 1.5f)]
     public float speedMultiplier = 0.5f;
 
-    [Header("Title Screen")]
-    [Tooltip("체크하면 타이틀 화면에서도 기본 속도로 천천히 스크롤합니다")]
-    public bool scrollOnTitle = true;
-
-    [Tooltip("타이틀 화면에서의 기본 스크롤 속도")]
-    public float titleScrollSpeed = 2f;
-
     [Header("Sorting & Tuning")]
     [Tooltip("Sorting Order를 직접 지정합니다. 낮을수록 뒤에 그려집니다 (예: -10)")]
     public int sortingOrder = -5;
@@ -57,6 +50,12 @@ public class ParallaxLayer : MonoBehaviour
     // 타일링을 위한 복제본
     private Transform tileA;
     private Transform tileB;
+
+    // 초기 위치 저장 (리셋용)
+    private Vector3 initialPosition;
+
+    // 상태 변화 감지용
+    private GameManager.GameState lastKnownState = GameManager.GameState.Title;
 
     void OnValidate()
     {
@@ -78,7 +77,7 @@ public class ParallaxLayer : MonoBehaviour
                     sortingOrder = -3;
                     break;
                 case LayerDepth.Layer4_Sky:
-                    speedMultiplier = 0.0f; // 카메라와 완전 동일한 속도
+                    speedMultiplier = 0.0f;
                     sortingOrder = -5;
                     break;
             }
@@ -97,10 +96,32 @@ public class ParallaxLayer : MonoBehaviour
             return;
         }
 
-        // 스프라이트의 월드 기준 가로 길이 계산 (미세한 틈새 보정 적용)
+        // 초기 위치 기억
+        initialPosition = transform.position;
+
+        // 스프라이트의 월드 기준 가로 길이 계산
         spriteWidth = (sr.sprite.bounds.size.x * transform.localScale.x) - overlapCorrection;
 
         SetupTiling();
+    }
+
+    /// <summary>
+    /// 타일을 초기 위치로 되돌립니다.
+    /// </summary>
+    void ResetTiles()
+    {
+        if (tileA != null)
+        {
+            tileA.position = initialPosition;
+        }
+        if (tileB != null)
+        {
+            tileB.position = new Vector3(
+                initialPosition.x + spriteWidth,
+                initialPosition.y,
+                initialPosition.z
+            );
+        }
     }
 
     /// <summary>
@@ -108,10 +129,8 @@ public class ParallaxLayer : MonoBehaviour
     /// </summary>
     void SetupTiling()
     {
-        // 원본을 tileA로 사용
         tileA = transform;
 
-        // 복제본 생성 (tileB)
         GameObject clone = new GameObject(gameObject.name + "_Tile");
         clone.transform.SetParent(transform.parent);
         clone.transform.position = new Vector3(
@@ -135,20 +154,27 @@ public class ParallaxLayer : MonoBehaviour
 
     void Update()
     {
+        // 상태 변화 감지: 타이틀로 돌아오면 즉시 타일 리셋
+        if (GameManager.Instance != null)
+        {
+            var currentState = GameManager.Instance.CurrentState;
+            if (currentState == GameManager.GameState.Title && lastKnownState != GameManager.GameState.Title)
+            {
+                ResetTiles();
+            }
+            lastKnownState = currentState;
+        }
+
         float scrollSpeed = GetCurrentScrollSpeed();
         if (scrollSpeed <= 0f) return;
 
         float camX = Camera.main != null ? Camera.main.transform.position.x : 0f;
 
-        // 전진형 패러다임: 
-        // speedMultiplier가 1(가까움, 바닥)이면 안 움직임 (0) -> 카메라가 지나가면서 타일링됨
-        // speedMultiplier가 0(멀음, 하늘)이면 카메라 속도와 동일하게 이동 -> 카메라를 완벽히 따라다님
         float moveAmount = scrollSpeed * (1f - speedMultiplier) * Time.deltaTime;
 
         tileA.position += Vector3.right * moveAmount;
         tileB.position += Vector3.right * moveAmount;
 
-        // 카메라 왼쪽으로 완전히 벗어난 타일을 오른쪽으로 이동
         if (tileA.position.x < camX - spriteWidth)
         {
             tileA.position = new Vector3(
@@ -172,15 +198,9 @@ public class ParallaxLayer : MonoBehaviour
     {
         if (GameManager.Instance == null) return 0f;
 
-        var state = GameManager.Instance.CurrentState;
-
-        if (state == GameManager.GameState.Playing)
+        if (GameManager.Instance.CurrentState == GameManager.GameState.Playing)
         {
             return GameManager.Instance.CurrentScrollSpeed;
-        }
-        else if (scrollOnTitle && state == GameManager.GameState.Title)
-        {
-            return titleScrollSpeed;
         }
 
         return 0f;

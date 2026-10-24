@@ -17,6 +17,10 @@ public class SFXManager : MonoBehaviour
     public AudioClip nearMissClip;
     public AudioClip deathClip;
 
+    [Header("Volume")]
+    [Range(0f, 1f)]
+    public float sfxVolume = 1f;
+
     void Awake()
     {
         if (Instance != null && Instance != this) 
@@ -26,6 +30,8 @@ public class SFXManager : MonoBehaviour
         }
         Instance = this;
 
+        sfxVolume = PlayerPrefs.GetFloat("SFXVolume", 1f);
+
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
@@ -33,6 +39,15 @@ public class SFXManager : MonoBehaviour
         }
 
         StartCoroutine(SubscribeEvents());
+    }
+
+    /// <summary>
+    /// 외부(옵션 UI 등)에서 SFX 볼륨을 조절할 때 호출
+    /// </summary>
+    public void SetVolume(float volume)
+    {
+        sfxVolume = Mathf.Clamp01(volume);
+        PlayerPrefs.SetFloat("SFXVolume", sfxVolume);
     }
 
     private System.Collections.IEnumerator SubscribeEvents()
@@ -63,27 +78,27 @@ public class SFXManager : MonoBehaviour
     {
         if (audioSource == null || nearMissClip == null) return;
         audioSource.pitch = 1f + (combo - 1) * 0.15f; // 콤보당 음정 상승
-        audioSource.PlayOneShot(nearMissClip, 0.5f + combo * 0.1f);
+        audioSource.PlayOneShot(nearMissClip, (0.5f + combo * 0.1f) * sfxVolume);
     }
 
     void HandleGameOver()
     {
         if (audioSource == null || deathClip == null) return;
         audioSource.pitch = 1f;
-        audioSource.PlayOneShot(deathClip, 0.7f);
+        audioSource.PlayOneShot(deathClip, 0.7f * sfxVolume);
     }
 
     public void PlayBounce()
     {
         if (audioSource == null || bounceClip == null) return;
         audioSource.pitch = 1f;
-        audioSource.PlayOneShot(bounceClip, 0.3f);
+        audioSource.PlayOneShot(bounceClip, 0.3f * sfxVolume);
     }
 
     public void PlayClick()
     {
         if (audioSource == null || clickClip == null) return;
         audioSource.pitch = 1f;
-        audioSource.PlayOneShot(clickClip, 0.2f);
+        audioSource.PlayOneShot(clickClip, 0.2f * sfxVolume);
     }
 }

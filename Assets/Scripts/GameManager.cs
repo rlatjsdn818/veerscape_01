@@ -12,6 +12,11 @@ public class GameManager : MonoBehaviour
 
     public enum GameState { Title, Playing, GameOver }
 
+    [Header("Speed Settings")]
+    [Tooltip("전방 이동(스크롤) 속도 배율. 기본값 1.0이며, 인스펙터에서 실시간으로 빠르게/느리게 조절할 수 있습니다.")]
+    [Range(0.5f, 3f)]
+    public float scrollSpeedMultiplier = 1.0f;
+
     // ── 상태 ──
     public GameState CurrentState { get; private set; } = GameState.Title;
     public float Distance { get; private set; }
@@ -20,6 +25,8 @@ public class GameManager : MonoBehaviour
 
     // ── 부스트 ──
     private float boostTimer;
+    private float boostDuration = 0.5f;
+    private float boostInitialAmount;
     private float boostSpeedAdd;
 
     // ── 무적 (Safety Window) ──
@@ -66,13 +73,19 @@ public class GameManager : MonoBehaviour
             OnZoneChanged?.Invoke(currentZoneName);
         }
 
-        // 부스트 감쇠
+        // 부스트 감쇠 (급격한 단차 없이 매끄럽게 감속)
         if (boostTimer > 0f)
         {
             boostTimer -= Time.deltaTime;
-            if (boostTimer <= 0f) boostSpeedAdd = 0f;
+            float t = Mathf.Clamp01(boostTimer / Mathf.Max(0.001f, boostDuration));
+            float smoothT = t * t * (3f - 2f * t); // SmoothStep 감쇠
+            boostSpeedAdd = boostInitialAmount * smoothT;
+            if (boostTimer <= 0f)
+            {
+                boostSpeedAdd = 0f;
+            }
         }
-        CurrentScrollSpeed = baseSpeed + boostSpeedAdd;
+        CurrentScrollSpeed = (baseSpeed * scrollSpeedMultiplier) + boostSpeedAdd;
 
         // 무적 감쇠
         if (invincibilityTimer > 0f)
@@ -103,7 +116,7 @@ public class GameManager : MonoBehaviour
         currentZoneName = "";
 
         var tier = DifficultyConfig.GetTier(0f);
-        CurrentScrollSpeed = tier.scrollSpeed;
+        CurrentScrollSpeed = tier.scrollSpeed * scrollSpeedMultiplier;
 
         OnGameStart?.Invoke();
     }
@@ -139,8 +152,10 @@ public class GameManager : MonoBehaviour
 
     public void ApplyBoost(float additionalSpeed, float duration)
     {
-        boostSpeedAdd = additionalSpeed;
+        boostInitialAmount = additionalSpeed;
+        boostDuration = duration;
         boostTimer = duration;
+        boostSpeedAdd = additionalSpeed;
     }
 
     /// <summary>
