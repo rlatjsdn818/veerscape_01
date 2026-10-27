@@ -83,6 +83,12 @@ public class UIManager : MonoBehaviour
         // 슬라이더 초기값 및 리스너 등록
         InitOptionsSliders();
 
+        // 옵션 패널에 키 바인딩 UI 컴포넌트 연결
+        if (optionsPanel != null && optionsPanel.GetComponent<KeybindUI>() == null)
+        {
+            optionsPanel.AddComponent<KeybindUI>();
+        }
+
         ShowTitle();
     }
 

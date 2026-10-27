@@ -9,9 +9,11 @@ using System.Collections.Generic;
 /// </summary>
 public class ObstacleSpawner : MonoBehaviour
 {
-    [Header("Prefab References")]
-    [Tooltip("기본 가시(Spike) 장애물 프리팹")]
+    [Tooltip("기본 가시(Spike) 장애물 프리팹 (공중 작은 회전 가시 등)")]
     [SerializeField] private GameObject obstaclePrefab;
+
+    [Tooltip("바닥/천장 큰 가시(Big Spike) 전용 프리팹 (미할당 시 자동 탐색)")]
+    [SerializeField] private GameObject bigSpikePrefab;
 
     [Tooltip("회전 톱니바퀴(Saw) 장애물 프리팹 (미할당 시 자동 탐색)")]
     [SerializeField] private GameObject sawPrefab;
@@ -41,6 +43,15 @@ public class ObstacleSpawner : MonoBehaviour
         if (gm != null)
         {
             gm.OnGameStart += ResetSpawner;
+        }
+
+        // bigSpikePrefab 미할당 시 자동 로드
+        if (bigSpikePrefab == null)
+        {
+#if UNITY_EDITOR
+            bigSpikePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/BigSpikePrefab.prefab");
+#endif
+            if (bigSpikePrefab == null) bigSpikePrefab = obstaclePrefab;
         }
 
         // sawPrefab이 인스펙터에서 미할당된 경우 자동으로 Prefabs 탐색
@@ -76,7 +87,8 @@ public class ObstacleSpawner : MonoBehaviour
             var tier = DifficultyConfig.GetTier(gm.Distance);
 
             float speed = Mathf.Max(gm.CurrentScrollSpeed, 1f);
-            spawnTimer = Random.Range(tier.spawnIntervalMin, tier.spawnIntervalMax) + (extraDistance / speed);
+            // 복합 패턴 후의 딜레이를 0.55배로 축소하여 빈 구간 없이 긴장감 유지
+            spawnTimer = Random.Range(tier.spawnIntervalMin, tier.spawnIntervalMax) + (extraDistance / speed * 0.55f);
         }
     }
 
@@ -85,12 +97,12 @@ public class ObstacleSpawner : MonoBehaviour
         var tier = DifficultyConfig.GetTier(gm.Distance);
 
         // 패턴 목록:
-        // 0: 바닥/천장 큰 가시 (Big Spike)
-        // 1: 위아래 대형 가시 게이트 (Double Big Spikes)
-        // 2: 대형 가시 복도 (Corridor)
-        // 3: 지그재그 가시 (Zigzag)
-        // 4: 공중 작은 회전 가시 (Small Spinning Spike) ⭐
-        // 5: 공중 회전 톱니바퀴 (Spinning Saw Blade) ⭐
+        // 0: 바닥/천장 큰 가시 (단일 또는 연속 쌍)
+        // 1: 위아래 대형 가시 게이트
+        // 2: 대형 가시 복도 (3~5연속)
+        // 3: 지그재그 대형 가시 (4~6연속)
+        // 4: 공중 작은 회전 가시
+        // 5: 공중 회전 톱니바퀴
         List<int> patterns = new List<int> { 0, 4, 5 };
         if (tier.doubleObstacles) patterns.Add(1);
         if (tier.corridors) patterns.Add(2);
@@ -111,20 +123,36 @@ public class ObstacleSpawner : MonoBehaviour
         return 0f;
     }
 
+    private GameObject BigSpikePrefabToUse => bigSpikePrefab != null ? bigSpikePrefab : obstaclePrefab;
+
     /// <summary>
-    /// [타입 1] 바닥/천장 큰 가시: 든든하게 고정되어 있는 대형 가시
+    /// [타입 1] 바닥/천장 큰 가시: 35% 확률로 2연속 스폰하여 밀도 증가
     /// </summary>
     float SpawnSingleBigSpike(DifficultyConfig.TierData tier)
     {
         bool isTop = Random.value > 0.5f;
         float h = Random.Range(tier.obstacleHeightMin, tier.obstacleHeightMax);
-
         float scaleX = h * 0.75f;
         float scaleY = h;
-        float y = isTop ? TOP_BOUND - (scaleY * 0.45f) : BOTTOM_BOUND + (scaleY * 0.45f);
-
+        float y = isTop ? TOP_BOUND - (scaleY * 0.5f) : BOTTOM_BOUND + (scaleY * 0.5f);
         Quaternion rot = isTop ? Quaternion.Euler(0f, 0f, 180f) : Quaternion.identity;
-        CreateBigSpike(obstaclePrefab, new Vector3(SPAWN_X, y, 0f), new Vector3(scaleX, scaleY, 1.0f), rot, tier.zoneName);
+
+        CreateBigSpike(BigSpikePrefabToUse, new Vector3(SPAWN_X, y, 0f), new Vector3(scaleX, scaleY, 1.0f), rot, tier.zoneName);
+
+        // 35% 확률로 바로 뒤에 반대쪽 또는 같은 쪽에 추가 가시 배치
+        if (Random.value < 0.35f)
+        {
+            bool secondTop = Random.value > 0.5f;
+            float h2 = Random.Range(tier.obstacleHeightMin, tier.obstacleHeightMax);
+            float sY2 = h2;
+            float sX2 = sY2 * 0.75f;
+            float y2 = secondTop ? TOP_BOUND - (sY2 * 0.5f) : BOTTOM_BOUND + (sY2 * 0.5f);
+            Quaternion rot2 = secondTop ? Quaternion.Euler(0f, 0f, 180f) : Quaternion.identity;
+
+            CreateBigSpike(BigSpikePrefabToUse, new Vector3(SPAWN_X + 2.2f, y2, 0f), new Vector3(sX2, sY2, 1.0f), rot2, tier.zoneName);
+            return 2.2f;
+        }
+
         return 0f;
     }
 
@@ -143,31 +171,31 @@ public class ObstacleSpawner : MonoBehaviour
         {
             float sY = topHeight;
             float sX = sY * 0.75f;
-            float y = TOP_BOUND - (sY * 0.45f);
-            CreateBigSpike(obstaclePrefab, new Vector3(SPAWN_X, y, 0f), new Vector3(sX, sY, 1.0f), Quaternion.Euler(0f, 0f, 180f), tier.zoneName);
+            float y = TOP_BOUND - (sY * 0.5f);
+            CreateBigSpike(BigSpikePrefabToUse, new Vector3(SPAWN_X, y, 0f), new Vector3(sX, sY, 1.0f), Quaternion.Euler(0f, 0f, 180f), tier.zoneName);
         }
         if (botHeight > 0.6f)
         {
             float sY = botHeight;
             float sX = sY * 0.75f;
-            float y = BOTTOM_BOUND + (sY * 0.45f);
-            CreateBigSpike(obstaclePrefab, new Vector3(SPAWN_X, y, 0f), new Vector3(sX, sY, 1.0f), Quaternion.identity, tier.zoneName);
+            float y = BOTTOM_BOUND + (sY * 0.5f);
+            CreateBigSpike(BigSpikePrefabToUse, new Vector3(SPAWN_X, y, 0f), new Vector3(sX, sY, 1.0f), Quaternion.identity, tier.zoneName);
         }
         return 0f;
     }
 
     /// <summary>
-    /// 가시 복도 패턴
+    /// 가시 복도 패턴: 3~5개 기둥, 2.4 유닛 간격
     /// </summary>
     float SpawnCorridor(DifficultyConfig.TierData tier)
     {
-        int segments = Random.Range(3, 5);
+        int segments = Random.Range(3, 6);
         float gap = Random.Range(tier.gapSizeMin, tier.gapSizeMax);
         float gapCenter = Random.Range(BOTTOM_BOUND + gap / 2f + 0.8f, TOP_BOUND - gap / 2f - 0.8f);
 
         for (int i = 0; i < segments; i++)
         {
-            float x = SPAWN_X + i * 2.8f;
+            float x = SPAWN_X + i * 2.4f;
             gapCenter += Random.Range(-0.5f, 0.5f);
             gapCenter = Mathf.Clamp(gapCenter, BOTTOM_BOUND + gap / 2f + 0.5f, TOP_BOUND - gap / 2f - 0.5f);
 
@@ -175,63 +203,71 @@ public class ObstacleSpawner : MonoBehaviour
             float botH = (gapCenter - gap / 2f) - BOTTOM_BOUND;
 
             if (topH > 0.5f)
-                CreateBigSpike(obstaclePrefab, new Vector3(x, TOP_BOUND - (topH * 0.45f), 0f),
+                CreateBigSpike(BigSpikePrefabToUse, new Vector3(x, TOP_BOUND - (topH * 0.5f), 0f),
                                new Vector3(topH * 0.75f, topH, 1.0f), Quaternion.Euler(0f, 0f, 180f), tier.zoneName);
             if (botH > 0.5f)
-                CreateBigSpike(obstaclePrefab, new Vector3(x, BOTTOM_BOUND + (botH * 0.45f), 0f),
+                CreateBigSpike(BigSpikePrefabToUse, new Vector3(x, BOTTOM_BOUND + (botH * 0.5f), 0f),
                                new Vector3(botH * 0.75f, botH, 1.0f), Quaternion.identity, tier.zoneName);
         }
-        return (segments - 1) * 2.8f;
+        return (segments - 1) * 2.4f;
     }
 
     /// <summary>
-    /// 지그재그 대형 가시 패턴
+    /// 지그재그 대형 가시 패턴: 4~6개 연속 지그재그
     /// </summary>
     float SpawnZigzag(DifficultyConfig.TierData tier)
     {
-        int count = Random.Range(3, 5);
+        int count = Random.Range(4, 7);
         bool isTop = Random.value > 0.5f;
 
         for (int i = 0; i < count; i++)
         {
-            float x = SPAWN_X + i * 2.8f;
+            float x = SPAWN_X + i * 2.4f;
             float h = Random.Range(tier.obstacleHeightMin, tier.obstacleHeightMax);
             float sY = h;
             float sX = sY * 0.75f;
-            float y = isTop ? TOP_BOUND - (sY * 0.45f) : BOTTOM_BOUND + (sY * 0.45f);
+            float y = isTop ? TOP_BOUND - (sY * 0.5f) : BOTTOM_BOUND + (sY * 0.5f);
             Quaternion rot = isTop ? Quaternion.Euler(0f, 0f, 180f) : Quaternion.identity;
 
-            CreateBigSpike(obstaclePrefab, new Vector3(x, y, 0f), new Vector3(sX, sY, 1.0f), rot, tier.zoneName);
+            CreateBigSpike(BigSpikePrefabToUse, new Vector3(x, y, 0f), new Vector3(sX, sY, 1.0f), rot, tier.zoneName);
             isTop = !isTop;
         }
-        return (count - 1) * 2.8f;
+        return (count - 1) * 2.4f;
     }
 
     /// <summary>
-    /// [타입 2] 공중 작은 회전 가시:
-    /// - 공중에 떠서 훨씬 아담하고 작은 크기(0.5 ~ 0.7)로 슁슁 회전하며 다가오는 가시
+    /// [타입 2] 공중 작은 회전 가시: 40% 확률로 2연속 출현
     /// </summary>
     float SpawnSmallSpinningSpike(DifficultyConfig.TierData tier)
     {
         if (obstaclePrefab == null) return 0f;
 
-        // 공중 위치 (중앙 및 상/하 라인)
         float[] yPositions = new float[] { 0f, 1.3f, -1.3f, 2.0f, -2.0f };
         float targetY = yPositions[Random.Range(0, yPositions.Length)];
-
-        // 기존 큰 가시(1.5~3.0)보다 훨씬 작고 아담한 크기 (공 0.38 크기에 맞춘 0.5~0.68)
         float smallSize = Random.Range(0.5f, 0.68f);
 
-        GameObject root = Instantiate(obstaclePrefab, new Vector3(SPAWN_X, targetY, 0f), Quaternion.identity);
-        root.transform.localScale = new Vector3(smallSize, smallSize, 1.0f);
+        SpawnSingleSmallSpike(SPAWN_X, targetY, smallSize, tier.zoneName);
+
+        // 40% 확률로 2연속 스폰
+        if (Random.value < 0.40f)
+        {
+            float targetY2 = yPositions[Random.Range(0, yPositions.Length)];
+            SpawnSingleSmallSpike(SPAWN_X + 2.0f, targetY2, smallSize, tier.zoneName);
+            return 2.0f;
+        }
+
+        return 0f;
+    }
+
+    void SpawnSingleSmallSpike(float x, float y, float size, string zoneName)
+    {
+        GameObject root = Instantiate(obstaclePrefab, new Vector3(x, y, 0f), Quaternion.identity);
+        root.transform.localScale = new Vector3(size, size, 1.0f);
 
         var obs = root.GetComponent<Obstacle>();
         if (obs != null)
         {
-            // 공중에서 빙글빙글 회전 (초당 200~320도)
             obs.rotateSpeed = (Random.value > 0.5f ? 1 : -1) * Random.Range(200f, 320f);
-
-            // 35% 확률로 상하 미세 부유 진동
             if (Random.value < 0.35f)
             {
                 obs.isMoving = true;
@@ -239,13 +275,11 @@ public class ObstacleSpawner : MonoBehaviour
                 obs.movingFrequency = Random.Range(2f, 3.5f);
             }
         }
-
-        ApplyColor(root, tier.zoneName);
-        return 0f;
+        ApplyColor(root, zoneName);
     }
 
     /// <summary>
-    /// [타입 3] 공중 회전 톱니바퀴 (Spinning Saw Blade)
+    /// [타입 3] 공중 회전 톱니바퀴 (Spinning Saw Blade): 45% 확률로 2단 톱니 출현
     /// </summary>
     float SpawnSawBlade(DifficultyConfig.TierData tier)
     {
@@ -254,18 +288,30 @@ public class ObstacleSpawner : MonoBehaviour
 
         float[] yPositions = new float[] { 0f, 1.4f, -1.4f, 2.2f, -2.2f };
         float targetY = yPositions[Random.Range(0, yPositions.Length)];
-
-        // 아담한 톱니바퀴 크기
         float sawSize = Random.Range(0.7f, 1.05f);
 
-        GameObject root = Instantiate(targetPrefab, new Vector3(SPAWN_X, targetY, 0f), Quaternion.identity);
-        root.transform.localScale = new Vector3(sawSize, sawSize, 1.0f);
+        SpawnSingleSaw(targetPrefab, SPAWN_X, targetY, sawSize, tier.zoneName);
+
+        // 45% 확률로 2연속 톱니 또는 상/하 톱니 배치
+        if (Random.value < 0.45f)
+        {
+            float targetY2 = yPositions[Random.Range(0, yPositions.Length)];
+            SpawnSingleSaw(targetPrefab, SPAWN_X + 2.2f, targetY2, sawSize, tier.zoneName);
+            return 2.2f;
+        }
+
+        return 0f;
+    }
+
+    void SpawnSingleSaw(GameObject targetPrefab, float x, float y, float size, string zoneName)
+    {
+        GameObject root = Instantiate(targetPrefab, new Vector3(x, y, 0f), Quaternion.identity);
+        root.transform.localScale = new Vector3(size, size, 1.0f);
 
         var obs = root.GetComponent<Obstacle>();
         if (obs != null)
         {
             obs.rotateSpeed = (Random.value > 0.5f ? 1 : -1) * Random.Range(220f, 360f);
-
             if (Random.value < 0.4f)
             {
                 obs.isMoving = true;
@@ -273,9 +319,7 @@ public class ObstacleSpawner : MonoBehaviour
                 obs.movingFrequency = Random.Range(1.8f, 3f);
             }
         }
-
-        ApplyColor(root, tier.zoneName);
-        return 0f;
+        ApplyColor(root, zoneName);
     }
 
     /// <summary>

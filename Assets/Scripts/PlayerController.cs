@@ -103,10 +103,20 @@ public class PlayerController : MonoBehaviour
     {
         if (gm == null || gm.CurrentState != GameManager.GameState.Playing || isDead) return;
 
-        // 1. 클릭으로 중력 반전 (궤도 전환)
+        // 1. 등록된 키(좌클릭, 스페이스바 등)로 중력 반전 (궤도 전환)
         // 시작 직후 0.1초 및 UI 터치는 무시
-        if (Input.GetMouseButtonDown(0) && Time.time - playStartTime > 0.1f
-            && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
+        bool inputTriggered = false;
+        if (KeybindManager.Instance != null)
+        {
+            inputTriggered = KeybindManager.Instance.IsActionTriggered();
+        }
+        else
+        {
+            inputTriggered = (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
+                && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject());
+        }
+
+        if (inputTriggered && Time.time - playStartTime > 0.1f)
         {
             // 중력 방향 반전 (-1 <-> 1)
             gravityDirection *= -1;
