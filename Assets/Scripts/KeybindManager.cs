@@ -83,6 +83,31 @@ public class KeybindManager : MonoBehaviour
     /// <summary>
     /// 새 키 바인딩 추가
     /// </summary>
+    /// <summary>
+    /// 지정된 슬롯(0: 기본키, 1: 보조키)의 키 변경
+    /// </summary>
+    public void SetKeyAtSlot(int slotIndex, KeyCode newKey)
+    {
+        if (newKey == KeyCode.None || newKey == KeyCode.Escape) return;
+
+        // 목록 크기가 부족할 경우 확장
+        while (boundKeys.Count <= slotIndex)
+        {
+            boundKeys.Add(KeyCode.None);
+        }
+
+        // 다른 슬롯과 키가 겹치면 맞바꾸거나 기존 자리 갱신
+        int existingIndex = boundKeys.IndexOf(newKey);
+        if (existingIndex >= 0 && existingIndex != slotIndex)
+        {
+            // 자리 맞바꾸기
+            boundKeys[existingIndex] = boundKeys[slotIndex];
+        }
+
+        boundKeys[slotIndex] = newKey;
+        SaveKeybinds();
+    }
+
     public bool AddKey(KeyCode key)
     {
         if (key == KeyCode.None || key == KeyCode.Escape) return false;

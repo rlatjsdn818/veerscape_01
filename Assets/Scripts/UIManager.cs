@@ -29,6 +29,13 @@ public class UIManager : MonoBehaviour
     public Slider sfxSlider; // SFX 볼륨 조절 슬라이더
     public Button optionsCloseButton; // 옵션 창 닫기 버튼
 
+    [Header("Keybind Elements (Dynamic List / No Prefab Asset Required)")]
+    public Transform keyContainer;        // 키 아이템들이 나열될 부모 (Layout Group 등)
+    public GameObject keyItemTemplate;    // 씬 내 템플릿 오브젝트 (텍스트 + 삭제버튼 포함, 기본 비활성화)
+    public Button addKeyButton;           // + 새 키 추가 버튼
+    public Button resetKeybindsButton;    // 기본값 초기화 버튼
+    public TMP_Text keybindStatusText;    // 상태 안내 문구 ("키를 누르세요...")
+
     [Header("Game Over Elements")]
     public TMP_Text finalDistanceText;
     public TMP_Text finalBestText;
@@ -37,6 +44,7 @@ public class UIManager : MonoBehaviour
     private GameManager gm;
     private float zoneChangeTimer;
     private float titleShowTime;
+    private bool isListeningForKey = false;
 
     void Awake()
     {
@@ -83,11 +91,8 @@ public class UIManager : MonoBehaviour
         // 슬라이더 초기값 및 리스너 등록
         InitOptionsSliders();
 
-        // 옵션 패널에 키 바인딩 UI 컴포넌트 연결
-        if (optionsPanel != null && optionsPanel.GetComponent<KeybindUI>() == null)
-        {
-            optionsPanel.AddComponent<KeybindUI>();
-        }
+        // 키바인딩 UI 초기화 및 이벤트 연결
+        InitKeybindUI();
 
         ShowTitle();
     }
@@ -158,10 +163,17 @@ public class UIManager : MonoBehaviour
             gm.OnGameOver -= ShowGameOver;
             gm.OnZoneChanged -= ShowZoneChange;
         }
+
+        if (KeybindManager.Instance != null)
+        {
+            KeybindManager.Instance.OnKeybindsChanged -= RefreshKeybindList;
+        }
     }
 
     void Update()
     {
+        CheckKeyInputForBinding();
+
         if (gm == null) return;
 
 
@@ -186,7 +198,144 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void ShowTitle()
+    #region Keybind UI Logic
+    private void InitKeybindUI()
+    {
+        // 씬 내 템플릿은 복제용이므로 원본은 숨김 처리
+        if (keyItemTemplate != null)
+        {
+            keyItemTemplate.SetActive(false);
+        }
+
+        if (addKeyButton != null)
+        {
+            addKeyButton.onClick.AddListener(OnAddKeyClicked);
+        }
+
+        if (resetKeybindsButton != null)
+        {
+            resetKeybindsButton.onClick.AddListener(OnResetKeybindsClicked);
+        }
+
+        if (KeybindManager.Instance != null)
+        {
+            KeybindManager.Instance.OnKeybindsChanged += RefreshKeybindList;
+        }
+
+        RefreshKeybindList();
+        UpdateKeybindStatus("");
+    }
+
+    private void RefreshKeybindList()
+    {
+        if (keyContainer == null || keyItemTemplate == null) return;
+
+        // 기존에 복제되었던 아이템들 정리 (템플릿 원본 제외)
+        for (int i = keyContainer.childCount - 1; i >= 0; i--)
+        {
+            Transform child = keyContainer.GetChild(i);
+            if (child.gameObject != keyItemTemplate)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        if (KeybindManager.Instance == null) return;
+
+        var keys = KeybindManager.Instance.BoundKeys;
+        for (int i = 0; i < keys.Count; i++)
+        {
+            KeyCode key = keys[i];
+
+            // 씬의 템플릿 오브젝트를 인스턴스화
+            GameObject itemObj = Instantiate(keyItemTemplate, keyContainer);
+            itemObj.SetActive(true);
+
+            // 키 이름 표시 (자식 TMP_Text)
+            TMP_Text label = itemObj.GetComponentInChildren<TMP_Text>();
+            if (label != null)
+            {
+                label.text = KeybindManager.GetKeyDisplayName(key);
+            }
+
+            // 삭제 버튼 연결 (자식 Button)
+            Button delBtn = itemObj.GetComponentInChildren<Button>();
+            if (delBtn != null)
+            {
+                // 최소 1개는 조작키가 남아있어야 하므로 1개 이하일 땐 삭제 버튼 비활성화
+                delBtn.interactable = keys.Count > 1;
+                delBtn.onClick.AddListener(() =>
+                {
+                    if (KeybindManager.Instance != null)
+                    {
+                        KeybindManager.Instance.RemoveKey(key);
+                    }
+                });
+            }
+        }
+    }
+
+    private void OnAddKeyClicked()
+    {
+        if (isListeningForKey) return;
+        isListeningForKey = true;
+        UpdateKeybindStatus("등록할 키를 누르세요... (ESC: 취소)");
+    }
+
+    private void OnResetKeybindsClicked()
+    {
+        isListeningForKey = false;
+        if (KeybindManager.Instance != null)
+        {
+            KeybindManager.Instance.ResetToDefaults();
+            UpdateKeybindStatus("기본값으로 초기화되었습니다.");
+        }
+    }
+
+    private void UpdateKeybindStatus(string message)
+    {
+        if (keybindStatusText != null)
+        {
+            keybindStatusText.text = message;
+        }
+    }
+
+    private void CheckKeyInputForBinding()
+    {
+        if (!isListeningForKey) return;
+
+        foreach (KeyCode k in System.Enum.GetValues(typeof(KeyCode)))
+        {
+            if (Input.GetKeyDown(k))
+            {
+                if (k == KeyCode.Escape)
+                {
+                    isListeningForKey = false;
+                    UpdateKeybindStatus("등록이 취소되었습니다.");
+                    return;
+                }
+
+                if (KeybindManager.Instance != null)
+                {
+                    bool added = KeybindManager.Instance.AddKey(k);
+                    if (added)
+                    {
+                        UpdateKeybindStatus($"'{KeybindManager.GetKeyDisplayName(k)}' 등록 완료");
+                    }
+                    else
+                    {
+                        UpdateKeybindStatus("이미 등록된 키입니다.");
+                    }
+                }
+
+                isListeningForKey = false;
+                break;
+            }
+        }
+    }
+    #endregion
+
+            public void ShowTitle()
     {
         if (titlePanel != null) titlePanel.SetActive(true);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
