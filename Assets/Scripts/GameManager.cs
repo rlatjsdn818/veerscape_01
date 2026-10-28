@@ -100,7 +100,65 @@ public class GameManager : MonoBehaviour
             comboResetTimer -= Time.deltaTime;
             if (comboResetTimer <= 0f) NearMissCombo = 0;
         }
+
+        CheckDebugZoneSkip();
     }
+
+    #region Debug Zone Skip
+    private readonly float[] zoneDistances = new float[] { 0f, 400f, 900f, 1500f, 2300f };
+
+    private void CheckDebugZoneSkip()
+    {
+        // PageUp: 다음 구간으로 즉시 스킵
+        bool pageUp = Input.GetKeyDown(KeyCode.PageUp);
+        // PageDown: 이전 구간으로 즉시 스킵
+        bool pageDown = Input.GetKeyDown(KeyCode.PageDown);
+
+#if ENABLE_INPUT_SYSTEM
+        if (UnityEngine.InputSystem.Keyboard.current != null)
+        {
+            if (UnityEngine.InputSystem.Keyboard.current.pageUpKey.wasPressedThisFrame) pageUp = true;
+            if (UnityEngine.InputSystem.Keyboard.current.pageDownKey.wasPressedThisFrame) pageDown = true;
+        }
+#endif
+
+        if (pageUp)
+        {
+            JumpToNextZone();
+        }
+        else if (pageDown)
+        {
+            JumpToPreviousZone();
+        }
+    }
+
+    private void JumpToNextZone()
+    {
+        for (int i = 0; i < zoneDistances.Length; i++)
+        {
+            if (zoneDistances[i] > Distance + 1f)
+            {
+                Distance = zoneDistances[i];
+                Debug.Log($"[Debug] Jumped forward to Zone: {DifficultyConfig.GetTier(Distance).zoneName} ({Distance}m)");
+                return;
+            }
+        }
+    }
+
+    private void JumpToPreviousZone()
+    {
+        for (int i = zoneDistances.Length - 1; i >= 0; i--)
+        {
+            if (zoneDistances[i] < Distance - 1f)
+            {
+                Distance = zoneDistances[i];
+                Debug.Log($"[Debug] Jumped backward to Zone: {DifficultyConfig.GetTier(Distance).zoneName} ({Distance}m)");
+                return;
+            }
+        }
+        Distance = 0f;
+    }
+    #endregion
 
     // ── Public API ──
 

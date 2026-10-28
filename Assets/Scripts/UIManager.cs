@@ -34,7 +34,7 @@ public class UIManager : MonoBehaviour
     public GameObject keyItemTemplate;    // 씬 내 템플릿 오브젝트 (텍스트 + 삭제버튼 포함, 기본 비활성화)
     public Button addKeyButton;           // + 새 키 추가 버튼
     public Button resetKeybindsButton;    // 기본값 초기화 버튼
-    public TMP_Text keybindStatusText;    // 상태 안내 문구 ("키를 누르세요...")
+    public TMP_Text keybindStatusText;    // 상태 안내 문구 ("Press any key...")
 
     [Header("Game Over Elements")]
     public TMP_Text finalDistanceText;
@@ -135,6 +135,7 @@ public class UIManager : MonoBehaviour
         if (optionsPanel != null)
         {
             optionsPanel.SetActive(true);
+            RefreshKeybindList();
         }
     }
 
@@ -164,7 +165,7 @@ public class UIManager : MonoBehaviour
             gm.OnZoneChanged -= ShowZoneChange;
         }
 
-        if (KeybindManager.Instance != null)
+        if (KeybindManager.HasInstance)
         {
             KeybindManager.Instance.OnKeybindsChanged -= RefreshKeybindList;
         }
@@ -201,10 +202,10 @@ public class UIManager : MonoBehaviour
     #region Keybind UI Logic
     private void InitKeybindUI()
     {
-        // 씬 내 템플릿은 복제용이므로 원본은 숨김 처리
+        // 씬 오브젝트를 강제로 비활성화하거나 파괴하지 않음
         if (keyItemTemplate != null)
         {
-            keyItemTemplate.SetActive(false);
+            keyItemTemplate.SetActive(true);
         }
 
         if (addKeyButton != null)
@@ -229,8 +230,11 @@ public class UIManager : MonoBehaviour
     private void RefreshKeybindList()
     {
         if (keyContainer == null || keyItemTemplate == null) return;
+        if (KeybindManager.Instance == null) return;
 
-        // 기존에 복제되었던 아이템들 정리 (템플릿 원본 제외)
+        var keys = KeybindManager.Instance.BoundKeys;
+
+        // 기존 자식 중 복제된 것들 정리
         for (int i = keyContainer.childCount - 1; i >= 0; i--)
         {
             Transform child = keyContainer.GetChild(i);
@@ -240,38 +244,56 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        if (KeybindManager.Instance == null) return;
+        // 템플릿 원본 자체는 항상 화면에 보이도록 유지 (첫 번째 키 표시)
+        keyItemTemplate.SetActive(true);
 
-        var keys = KeybindManager.Instance.BoundKeys;
-        for (int i = 0; i < keys.Count; i++)
+        if (keys.Count > 0)
+        {
+            SetupKeyButton(keyItemTemplate, keys[0]);
+        }
+
+        // 두 번째 키부터 추가로 복제 생성
+        for (int i = 1; i < keys.Count; i++)
         {
             KeyCode key = keys[i];
-
-            // 씬의 템플릿 오브젝트를 인스턴스화
             GameObject itemObj = Instantiate(keyItemTemplate, keyContainer);
             itemObj.SetActive(true);
+            SetupKeyButton(itemObj, key);
+        }
+    }
 
-            // 키 이름 표시 (자식 TMP_Text)
-            TMP_Text label = itemObj.GetComponentInChildren<TMP_Text>();
-            if (label != null)
-            {
-                label.text = KeybindManager.GetKeyDisplayName(key);
-            }
+    private void SetupKeyButton(GameObject itemObj, KeyCode key)
+    {
+        TMP_Text label = itemObj.GetComponentInChildren<TMP_Text>(true);
+        if (label != null)
+        {
+            label.text = KeybindManager.GetKeyDisplayName(key);
+        }
 
-            // 삭제 버튼 연결 (자식 Button)
-            Button delBtn = itemObj.GetComponentInChildren<Button>();
-            if (delBtn != null)
+        Button btn = itemObj.GetComponent<Button>();
+        if (btn == null) btn = itemObj.GetComponentInChildren<Button>(true);
+
+        if (btn != null)
+        {
+            btn.onClick.RemoveAllListeners();
+            KeyCode targetKey = key;
+            btn.onClick.AddListener(() =>
             {
-                // 최소 1개는 조작키가 남아있어야 하므로 1개 이하일 땐 삭제 버튼 비활성화
-                delBtn.interactable = keys.Count > 1;
-                delBtn.onClick.AddListener(() =>
+                if (KeybindManager.Instance != null)
                 {
-                    if (KeybindManager.Instance != null)
+                    if (KeybindManager.Instance.BoundKeys.Count <= 1)
                     {
-                        KeybindManager.Instance.RemoveKey(key);
+                        UpdateKeybindStatus("At least one key is required.");
+                        return;
                     }
-                });
-            }
+
+                    string keyName = KeybindManager.GetKeyDisplayName(targetKey);
+                    if (KeybindManager.Instance.RemoveKey(targetKey))
+                    {
+                        UpdateKeybindStatus($"'{keyName}' removed.");
+                    }
+                }
+            });
         }
     }
 
@@ -279,7 +301,7 @@ public class UIManager : MonoBehaviour
     {
         if (isListeningForKey) return;
         isListeningForKey = true;
-        UpdateKeybindStatus("등록할 키를 누르세요... (ESC: 취소)");
+        UpdateKeybindStatus("Press a key to bind... (ESC to cancel)");
     }
 
     private void OnResetKeybindsClicked()
@@ -288,7 +310,7 @@ public class UIManager : MonoBehaviour
         if (KeybindManager.Instance != null)
         {
             KeybindManager.Instance.ResetToDefaults();
-            UpdateKeybindStatus("기본값으로 초기화되었습니다.");
+            UpdateKeybindStatus("Reset to default keys.");
         }
     }
 
@@ -304,34 +326,110 @@ public class UIManager : MonoBehaviour
     {
         if (!isListeningForKey) return;
 
+        // 1. 레거시 Input 감지
         foreach (KeyCode k in System.Enum.GetValues(typeof(KeyCode)))
         {
             if (Input.GetKeyDown(k))
             {
-                if (k == KeyCode.Escape)
-                {
-                    isListeningForKey = false;
-                    UpdateKeybindStatus("등록이 취소되었습니다.");
-                    return;
-                }
-
-                if (KeybindManager.Instance != null)
-                {
-                    bool added = KeybindManager.Instance.AddKey(k);
-                    if (added)
-                    {
-                        UpdateKeybindStatus($"'{KeybindManager.GetKeyDisplayName(k)}' 등록 완료");
-                    }
-                    else
-                    {
-                        UpdateKeybindStatus("이미 등록된 키입니다.");
-                    }
-                }
-
-                isListeningForKey = false;
-                break;
+                ProcessKeyBinding(k);
+                return;
             }
         }
+
+#if ENABLE_INPUT_SYSTEM
+        // 2. New Input System 키보드 감지
+        var kb = UnityEngine.InputSystem.Keyboard.current;
+        if (kb != null)
+        {
+            if (kb.escapeKey.wasPressedThisFrame)
+            {
+                isListeningForKey = false;
+                UpdateKeybindStatus("Binding canceled.");
+                return;
+            }
+
+            if (kb.spaceKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.Space); return; }
+            if (kb.enterKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.Return); return; }
+            if (kb.tabKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.Tab); return; }
+            if (kb.leftShiftKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.LeftShift); return; }
+            if (kb.rightShiftKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.RightShift); return; }
+            if (kb.leftCtrlKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.LeftControl); return; }
+            if (kb.rightCtrlKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.RightControl); return; }
+            if (kb.leftAltKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.LeftAlt); return; }
+            if (kb.rightAltKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.RightAlt); return; }
+            if (kb.upArrowKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.UpArrow); return; }
+            if (kb.downArrowKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.DownArrow); return; }
+            if (kb.leftArrowKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.LeftArrow); return; }
+            if (kb.rightArrowKey.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.RightArrow); return; }
+
+            // A~Z 키
+            for (int i = 0; i < 26; i++)
+            {
+                var key = (UnityEngine.InputSystem.Key)(UnityEngine.InputSystem.Key.A + i);
+                if (kb[key].wasPressedThisFrame)
+                {
+                    ProcessKeyBinding((KeyCode)(KeyCode.A + i));
+                    return;
+                }
+            }
+
+            // 0~9 키
+            for (int i = 0; i < 10; i++)
+            {
+                var key = (UnityEngine.InputSystem.Key)(UnityEngine.InputSystem.Key.Digit0 + i);
+                if (kb[key].wasPressedThisFrame)
+                {
+                    ProcessKeyBinding((KeyCode)(KeyCode.Alpha0 + i));
+                    return;
+                }
+            }
+
+            // F1~F12 키
+            for (int i = 0; i < 12; i++)
+            {
+                var key = (UnityEngine.InputSystem.Key)(UnityEngine.InputSystem.Key.F1 + i);
+                if (kb[key].wasPressedThisFrame)
+                {
+                    ProcessKeyBinding((KeyCode)(KeyCode.F1 + i));
+                    return;
+                }
+            }
+        }
+
+        // 3. New Input System 마우스 감지
+        var mouse = UnityEngine.InputSystem.Mouse.current;
+        if (mouse != null)
+        {
+            if (mouse.leftButton.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.Mouse0); return; }
+            if (mouse.rightButton.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.Mouse1); return; }
+            if (mouse.middleButton.wasPressedThisFrame) { ProcessKeyBinding(KeyCode.Mouse2); return; }
+        }
+#endif
+    }
+
+    private void ProcessKeyBinding(KeyCode k)
+    {
+        if (k == KeyCode.Escape)
+        {
+            isListeningForKey = false;
+            UpdateKeybindStatus("Binding canceled.");
+            return;
+        }
+
+        if (KeybindManager.Instance != null)
+        {
+            bool added = KeybindManager.Instance.AddKey(k);
+            if (added)
+            {
+                UpdateKeybindStatus($"'{KeybindManager.GetKeyDisplayName(k)}' registered.");
+            }
+            else
+            {
+                UpdateKeybindStatus("Key already registered.");
+            }
+        }
+
+        isListeningForKey = false;
     }
     #endregion
 

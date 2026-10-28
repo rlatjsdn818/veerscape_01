@@ -15,6 +15,30 @@ public class BackgroundController : MonoBehaviour
     private List<Transform> gridLines = new List<Transform>();
     private float distanceSinceLastSpawn = 0f;
     
+    [System.Serializable]
+    public class ZoneBackgroundSetting
+    {
+        public string zoneName;                  // 구간 이름 (예: BASIC, SHIFT, FRACTURE, DISTORT, VOID)
+        public Sprite backgroundSprite;          // 해당 구간 고유 배경 이미지 (Sprite)
+        public Color tintColor = Color.white;    // 배경 틴트 컬러 (기본: 흰색)
+    }
+
+    [Header("Zone Custom Backgrounds (Inspector Slots)")]
+    public SpriteRenderer backgroundRenderer;    // 배경 이미지를 표시할 SpriteRenderer
+    public float backgroundFadeDuration = 1.0f;  // 배경 전환 페이드 시간
+    public List<ZoneBackgroundSetting> zoneBackgrounds = new List<ZoneBackgroundSetting>
+    {
+        new ZoneBackgroundSetting { zoneName = "BASIC" },
+        new ZoneBackgroundSetting { zoneName = "SHIFT" },
+        new ZoneBackgroundSetting { zoneName = "FRACTURE" },
+        new ZoneBackgroundSetting { zoneName = "DISTORT" },
+        new ZoneBackgroundSetting { zoneName = "VOID" }
+    };
+
+    private Sprite targetZoneSprite;
+    private Color targetZoneColor = Color.white;
+    private float currentBgAlpha = 1f;
+
     [Header("Colors")]
     public float colorTransitionSpeed = 1f;
     private Color currentColor;
@@ -31,6 +55,7 @@ public class BackgroundController : MonoBehaviour
         SetZoneColor("BASIC");
         currentColor = targetColor;
         UpdateColors();
+        ApplyZoneBackground("BASIC");
         
         // Pre-warm grid lines
         float startX = Camera.main != null ? Camera.main.transform.position.x - 15f : -15f;
@@ -134,6 +159,19 @@ public class BackgroundController : MonoBehaviour
     public void HandleZoneChanged(string zoneName)
     {
         SetZoneColor(zoneName);
+        ApplyZoneBackground(zoneName);
+    }
+
+    private void ApplyZoneBackground(string zoneName)
+    {
+        if (backgroundRenderer == null) return;
+
+        ZoneBackgroundSetting setting = zoneBackgrounds.Find(z => string.Equals(z.zoneName, zoneName, System.StringComparison.OrdinalIgnoreCase));
+        if (setting != null && setting.backgroundSprite != null)
+        {
+            backgroundRenderer.sprite = setting.backgroundSprite;
+            backgroundRenderer.color = setting.tintColor;
+        }
     }
 
     private void SetZoneColor(string zoneName)

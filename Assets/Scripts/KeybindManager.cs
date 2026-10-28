@@ -12,14 +12,19 @@ using System.Collections.Generic;
 public class KeybindManager : MonoBehaviour
 {
     private static KeybindManager instance;
+    private static bool isApplicationQuitting = false;
+
+    public static bool HasInstance => instance != null;
     public static KeybindManager Instance
     {
         get
         {
+            if (isApplicationQuitting) return null;
+
             if (instance == null)
             {
                 instance = FindAnyObjectByType<KeybindManager>();
-                if (instance == null)
+                if (instance == null && !isApplicationQuitting)
                 {
                     GameObject go = new GameObject("KeybindManager");
                     instance = go.AddComponent<KeybindManager>();
@@ -28,6 +33,11 @@ public class KeybindManager : MonoBehaviour
             }
             return instance;
         }
+    }
+
+    void OnApplicationQuit()
+    {
+        isApplicationQuitting = true;
     }
 
     private const string PREFS_KEY = "Veerscape_Keybinds";
@@ -128,7 +138,7 @@ public class KeybindManager : MonoBehaviour
     {
         if (boundKeys.Count <= 1)
         {
-            Debug.LogWarning("[KeybindManager] 최소 1개의 조작 키는 유지되어야 합니다.");
+            Debug.LogWarning("[KeybindManager] At least one control key must be maintained.");
             return false;
         }
 
@@ -198,22 +208,22 @@ public class KeybindManager : MonoBehaviour
     {
         switch (key)
         {
-            case KeyCode.Mouse0: return "좌클릭 (Mouse L)";
-            case KeyCode.Mouse1: return "우클릭 (Mouse R)";
-            case KeyCode.Mouse2: return "휠클릭 (Mouse M)";
-            case KeyCode.Space: return "스페이스 (Space)";
-            case KeyCode.Return: return "엔터 (Enter)";
-            case KeyCode.KeypadEnter: return "숫자패드 Enter";
-            case KeyCode.UpArrow: return "방향키 ↑";
-            case KeyCode.DownArrow: return "방향키 ↓";
-            case KeyCode.LeftArrow: return "방향키 ←";
-            case KeyCode.RightArrow: return "방향키 →";
-            case KeyCode.LeftShift: return "왼쪽 Shift";
-            case KeyCode.RightShift: return "오른쪽 Shift";
-            case KeyCode.LeftControl: return "왼쪽 Ctrl";
-            case KeyCode.RightControl: return "오른쪽 Ctrl";
-            case KeyCode.LeftAlt: return "왼쪽 Alt";
-            case KeyCode.RightAlt: return "오른쪽 Alt";
+            case KeyCode.Mouse0: return "Left Click (Mouse 0)";
+            case KeyCode.Mouse1: return "Right Click (Mouse 1)";
+            case KeyCode.Mouse2: return "Middle Click (Mouse 2)";
+            case KeyCode.Space: return "Space";
+            case KeyCode.Return: return "Enter";
+            case KeyCode.KeypadEnter: return "Keypad Enter";
+            case KeyCode.UpArrow: return "Up Arrow";
+            case KeyCode.DownArrow: return "Down Arrow";
+            case KeyCode.LeftArrow: return "Left Arrow";
+            case KeyCode.RightArrow: return "Right Arrow";
+            case KeyCode.LeftShift: return "Left Shift";
+            case KeyCode.RightShift: return "Right Shift";
+            case KeyCode.LeftControl: return "Left Ctrl";
+            case KeyCode.RightControl: return "Right Ctrl";
+            case KeyCode.LeftAlt: return "Left Alt";
+            case KeyCode.RightAlt: return "Right Alt";
             case KeyCode.Tab: return "Tab";
             default: return key.ToString();
         }
