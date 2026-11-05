@@ -25,9 +25,9 @@ public static class BigSpikePrefabGenerator
         nearMissCol.isTrigger = true;
         Vector2[] nearMissPoints = new Vector2[]
         {
-            new Vector2(0f, 0.72f),       // 상단 꼭짓점 여유 공간 (Near Miss 감지)
-            new Vector2(0.82f, -0.50f),    // 우하단 외곽
-            new Vector2(-0.82f, -0.50f)    // 좌하단 외곽
+            new Vector2(0f, 0.53f),       // 상단 꼭짓점 슬림한 여유 공간 (복도 통과 시 불필요한 발동 방지)
+            new Vector2(0.64f, -0.50f),    // 우하단 외곽
+            new Vector2(-0.64f, -0.50f)    // 좌하단 외곽
         };
         nearMissCol.SetPath(0, nearMissPoints);
 

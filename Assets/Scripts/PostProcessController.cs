@@ -90,12 +90,12 @@ public class PostProcessController : MonoBehaviour
 
     void HandleNearMiss(int combo)
     {
-        // 콤보에 비례하여 효과 증폭
-        targetBloomIntensity = 5f + (combo * 1.5f);
-        targetChromatic = 0.5f + (combo * 0.1f);
-        targetLens = -0.3f;
+        // 콤보에 비례하여 네온 블룸 발광 효과 연출 (화면 왜곡인 렌즈 디스토션은 히트박스 착시를 유발하므로 0 유지)
+        targetBloomIntensity = 4f + (combo * 1.0f);
+        targetChromatic = 0.2f + (combo * 0.05f);
+        targetLens = 0f; // 화면 왜곡을 제거하여 장애물 위치와 히트박스가 명확히 일치하도록 유지
         
-        effectTimer = 0.4f; // 효과 유지 시간
+        effectTimer = 0.25f; // 경쾌하고 빠른 효과 유지 시간
     }
 
     void HandleGameOver()

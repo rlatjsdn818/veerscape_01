@@ -217,23 +217,23 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Near Miss 판정 시 호출. 콤보 증가, 부스트, 무적 적용.
+    /// Near Miss 판정 시 호출. 콤보 증가, 부스트 적용.
+    /// (프레임 드랍처럼 느껴지는 HitStop과 장애물 통과를 유발하는 무적 버그 제거)
     /// </summary>
     public void TriggerNearMiss()
     {
         NearMissCombo++;
         comboResetTimer = COMBO_RESET_TIME;
 
-        // 콤보에 비례한 부스트
-        float boostAmount = 4f + NearMissCombo * 1.5f;
-        ApplyBoost(boostAmount, 0.5f);
+        // 콤보에 비례한 부스트 적용 (부드럽고 쾌적한 속도감)
+        float boostAmount = 3.5f + NearMissCombo * 1.0f;
+        ApplyBoost(boostAmount, 0.45f);
 
-        // 0.2초 충돌 유예 (Safety Window)
-        IsInvincible = true;
-        invincibilityTimer = 0.2f;
+        // 충돌 무적 제거: Near Miss 발동 중이라도 킬존 충돌 시 정상 사망하도록 하여 장애물 통과 버그 해결
+        IsInvincible = false;
+        invincibilityTimer = 0f;
 
         OnNearMiss?.Invoke(NearMissCombo);
-        TriggerHitStop(0.05f);
     }
 
     public void TriggerHitStop(float duration)

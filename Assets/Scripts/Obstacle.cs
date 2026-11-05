@@ -42,18 +42,10 @@ public class Obstacle : MonoBehaviour
     {
         if (gm == null || gm.CurrentState != GameManager.GameState.Playing) return;
 
-        // 1. 회전 애니메이션 (톱니바퀴 등)
+        // 1. 회전 애니메이션 (톱니바퀴 등): 루트 전체를 회전시켜 자식 킬존 히트박스와 스프라이트가 항상 100% 일치
         if (rotateSpeed != 0f)
         {
-            var visual = transform.Find("Visual");
-            if (visual != null)
-            {
-                visual.Rotate(0f, 0f, rotateSpeed * Time.deltaTime);
-            }
-            else
-            {
-                transform.Rotate(0f, 0f, rotateSpeed * Time.deltaTime);
-            }
+            transform.Rotate(0f, 0f, rotateSpeed * Time.deltaTime);
         }
 
         // 2. 상하 진동 이동

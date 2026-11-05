@@ -240,28 +240,29 @@ public class ObstacleSpawner : MonoBehaviour
     /// </summary>
     float SpawnSmallSpinningSpike(DifficultyConfig.TierData tier)
     {
-        if (obstaclePrefab == null) return 0f;
+        GameObject targetPrefab = BigSpikePrefabToUse;
+        if (targetPrefab == null) return 0f;
 
         float[] yPositions = new float[] { 0f, 1.3f, -1.3f, 2.0f, -2.0f };
         float targetY = yPositions[Random.Range(0, yPositions.Length)];
         float smallSize = Random.Range(0.5f, 0.68f);
 
-        SpawnSingleSmallSpike(SPAWN_X, targetY, smallSize, tier.zoneName);
+        SpawnSingleSmallSpike(targetPrefab, SPAWN_X, targetY, smallSize, tier.zoneName);
 
         // 40% 확률로 2연속 스폰
         if (Random.value < 0.40f)
         {
             float targetY2 = yPositions[Random.Range(0, yPositions.Length)];
-            SpawnSingleSmallSpike(SPAWN_X + 2.0f, targetY2, smallSize, tier.zoneName);
+            SpawnSingleSmallSpike(targetPrefab, SPAWN_X + 2.0f, targetY2, smallSize, tier.zoneName);
             return 2.0f;
         }
 
         return 0f;
     }
 
-    void SpawnSingleSmallSpike(float x, float y, float size, string zoneName)
+    void SpawnSingleSmallSpike(GameObject targetPrefab, float x, float y, float size, string zoneName)
     {
-        GameObject root = Instantiate(obstaclePrefab, new Vector3(x, y, 0f), Quaternion.identity);
+        GameObject root = Instantiate(targetPrefab, new Vector3(x, y, 0f), Quaternion.identity);
         root.transform.localScale = new Vector3(size, size, 1.0f);
 
         var obs = root.GetComponent<Obstacle>();

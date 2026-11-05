@@ -55,6 +55,12 @@ public class PlayerController : MonoBehaviour
             gm.OnGameOver += HandleGameOver;
         }
 
+        var rb = GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        }
+
         ApplyHitboxSize();
     }
 
@@ -207,12 +213,17 @@ public class PlayerController : MonoBehaviour
     {
         if (isDead || gm == null) return;
 
-        // 사망 영역 (ObstacleKillZone) 충돌 체크
+        // 사망 영역 (ObstacleKillZone) 충돌 체크: 킬존 접촉 시 즉시 사망
         var killZone = other.GetComponent<ObstacleKillZone>();
         if (killZone != null && !gm.IsInvincible)
         {
             Die();
         }
+    }
+
+    void OnTriggerStay2D(Collider2D other)
+    {
+        OnTriggerEnter2D(other);
     }
 
     void Die()

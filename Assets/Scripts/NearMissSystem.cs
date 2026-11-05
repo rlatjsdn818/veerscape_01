@@ -16,6 +16,7 @@ public class NearMissSystem : MonoBehaviour
         if (gm != null)
         {
             gm.OnGameStart += OnGameStart;
+            gm.OnGameOver += OnGameOver;
         }
     }
 
@@ -24,10 +25,16 @@ public class NearMissSystem : MonoBehaviour
         if (gm != null)
         {
             gm.OnGameStart -= OnGameStart;
+            gm.OnGameOver -= OnGameOver;
         }
     }
 
     void OnGameStart()
+    {
+        tracking.Clear();
+    }
+
+    void OnGameOver()
     {
         tracking.Clear();
     }
@@ -46,14 +53,14 @@ public class NearMissSystem : MonoBehaviour
 
     void OnTriggerExit2D(Collider2D other)
     {
-        if (gm == null) return;
+        if (gm == null || gm.CurrentState != GameManager.GameState.Playing) return;
 
-        // Near Miss 영역을 사망 없이 통과 = 성공!
+        // Near Miss 영역을 사망 없이 성공적으로 통과했을 때만 판정
         var obstacle = other.GetComponent<Obstacle>();
         if (obstacle != null && tracking.Contains(obstacle))
         {
             tracking.Remove(obstacle);
-            if (gm.CurrentState == GameManager.GameState.Playing && !obstacle.hasTriggeredNearMiss)
+            if (!obstacle.hasTriggeredNearMiss)
             {
                 obstacle.hasTriggeredNearMiss = true;
                 gm.TriggerNearMiss();
