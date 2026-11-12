@@ -16,6 +16,7 @@ public class SFXManager : MonoBehaviour
     public AudioClip clickClip;
     public AudioClip nearMissClip;
     public AudioClip deathClip;
+    public AudioClip shardClip;
 
     [Header("Volume")]
     [Range(0f, 1f)]
@@ -100,5 +101,21 @@ public class SFXManager : MonoBehaviour
         if (audioSource == null || clickClip == null) return;
         audioSource.pitch = 1f;
         audioSource.PlayOneShot(clickClip, 0.2f * sfxVolume);
+    }
+
+    public void PlayShardCollect()
+    {
+        if (audioSource == null) return;
+        if (shardClip != null)
+        {
+            audioSource.pitch = Random.Range(0.95f, 1.05f);
+            audioSource.PlayOneShot(shardClip, 0.45f * sfxVolume);
+        }
+        else if (clickClip != null)
+        {
+            // 미할당 시 경쾌한 고음 차임벨 느낌으로 clickClip 활용
+            audioSource.pitch = Random.Range(1.6f, 1.85f);
+            audioSource.PlayOneShot(clickClip, 0.35f * sfxVolume);
+        }
     }
 }

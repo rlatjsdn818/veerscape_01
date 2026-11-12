@@ -43,6 +43,11 @@ public class GameManager : MonoBehaviour
     public event Action OnGameOver;
     public event Action<int> OnNearMiss;      // combo count
     public event Action<string> OnZoneChanged; // zone name
+    public event Action<int> OnShardCollected; // total collected this run
+
+    // ── 샤드(코인) ──
+    public int ShardsCollected { get; private set; }
+    public int TotalShards { get; private set; }
 
     private string currentZoneName = "";
 
@@ -54,6 +59,7 @@ public class GameManager : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         BestDistance = PlayerPrefs.GetFloat("VeerscapeBest", 0f);
+        TotalShards = PlayerPrefs.GetInt("VeerscapeShards", 0);
     }
 
     void Update()
@@ -167,6 +173,7 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.Playing;
         Distance = 0f;
         NearMissCombo = 0;
+        ShardsCollected = 0;
         boostTimer = 0f;
         boostSpeedAdd = 0f;
         invincibilityTimer = 0f;
@@ -234,6 +241,17 @@ public class GameManager : MonoBehaviour
         invincibilityTimer = 0f;
 
         OnNearMiss?.Invoke(NearMissCombo);
+    }
+
+    /// <summary>
+    /// 노란색 샤드(코인) 획득 처리
+    /// </summary>
+    public void CollectShard(int amount = 1)
+    {
+        ShardsCollected += amount;
+        TotalShards += amount;
+        PlayerPrefs.SetInt("VeerscapeShards", TotalShards);
+        OnShardCollected?.Invoke(ShardsCollected);
     }
 
     public void TriggerHitStop(float duration)

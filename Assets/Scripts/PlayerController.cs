@@ -27,6 +27,10 @@ public class PlayerController : MonoBehaviour
     public float topBound = 4.2f;
     public float bottomBound = -4.2f;
 
+    [Header("Physics Sync Options")]
+    [Tooltip("전방 속도(부스트)에 비례해 수직 바운스/낙하 시간까지 가속시킬지 여부. 기본값 false(권장): 위아래 조작 리듬이 항상 일정하게 유지되어 완벽히 예측 가능한 컨트롤이 가능해집니다.")]
+    public bool syncVerticalWithForwardSpeed = false;
+
     [Header("Visual & Hitbox (Size)")]
     [Tooltip("플레이어 스프라이트의 기본 크기. 0.35~0.4 권장 (기존 0.6에서 축소)")]
     public Vector3 normalScale = Vector3.one * 0.38f;
@@ -140,12 +144,19 @@ public class PlayerController : MonoBehaviour
         var tier = DifficultyConfig.GetTier(gm.Distance);
         float baseScrollSpeed = tier.scrollSpeed * gm.scrollSpeedMultiplier;
 
-        // 전방 부스트 비율 계산: 전방 속도가 평상시 대비 몇 배 빠른지 측정
-        float boostRatio = (baseScrollSpeed > 0.001f) ? Mathf.Max(1f, gm.CurrentScrollSpeed / baseScrollSpeed) : 1f;
 
-        // ★ 핵심: 전방 이동 속도가 빨라진 만큼 수직 물리 시간(effectiveDeltaTime)도 동일한 비율로 가속
-        // 이로 인해 전방 가속 시 dy/dx(궤도 각도와 곡률)가 왜곡되거나 꺾이지 않고 매끄럽게 유지됩니다.
-        float effectiveDeltaTime = Time.deltaTime * boostRatio;
+
+
+
+
+        // 수직 물리 시간: 기본값(권장)은 Time.deltaTime으로 일정하게 유지하여
+        // 전방 속도가 빨라져도 위아래 점프/바운스 리듬과 근육 기억이 100% 동일하게 유지됩니다.
+        float effectiveDeltaTime = Time.deltaTime;
+        if (syncVerticalWithForwardSpeed && baseScrollSpeed > 0.001f)
+        {
+            float boostRatio = Mathf.Max(1f, gm.CurrentScrollSpeed / baseScrollSpeed);
+            effectiveDeltaTime *= boostRatio;
+        }
 
         float currentSpeedScale = (tier.verticalSpeed / 4f) * speedMultiplier;
         float gravity = baseGravity * currentSpeedScale;

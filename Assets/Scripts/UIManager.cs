@@ -18,6 +18,7 @@ public class UIManager : MonoBehaviour
     [Header("HUD Elements")]
     public TMP_Text distanceText;
     public TMP_Text zoneChangeText;
+    public TMP_Text shardCountText;
 
     [Header("Title Elements")]
     public TMP_Text bestDistanceText;
@@ -39,6 +40,7 @@ public class UIManager : MonoBehaviour
     [Header("Game Over Elements")]
     public TMP_Text finalDistanceText;
     public TMP_Text finalBestText;
+    public TMP_Text finalShardText;
     public Button retryButton;
 
     private GameManager gm;
@@ -64,6 +66,7 @@ public class UIManager : MonoBehaviour
             gm.OnGameStart += ShowHUD;
             gm.OnGameOver += ShowGameOver;
             gm.OnZoneChanged += ShowZoneChange;
+            gm.OnShardCollected += UpdateShardUI;
         }
 
         if (retryButton != null)
@@ -163,6 +166,7 @@ public class UIManager : MonoBehaviour
             gm.OnGameStart -= ShowHUD;
             gm.OnGameOver -= ShowGameOver;
             gm.OnZoneChanged -= ShowZoneChange;
+            gm.OnShardCollected -= UpdateShardUI;
         }
 
         if (KeybindManager.HasInstance)
@@ -460,6 +464,7 @@ public class UIManager : MonoBehaviour
 
         if (distanceText != null) distanceText.text = "0m";
         if (zoneChangeText != null) zoneChangeText.gameObject.SetActive(false);
+        if (shardCountText != null) shardCountText.text = "0";
     }
 
     void ShowGameOver()
@@ -472,6 +477,14 @@ public class UIManager : MonoBehaviour
             finalDistanceText.text = Mathf.FloorToInt(gm.Distance) + "m";
         if (finalBestText != null)
             finalBestText.text = "BEST: " + Mathf.FloorToInt(gm.BestDistance) + "m";
+        if (finalShardText != null && gm != null)
+            finalShardText.text = "SHARDS: " + gm.ShardsCollected;
+    }
+
+    void UpdateShardUI(int count)
+    {
+        if (shardCountText != null)
+            shardCountText.text = count.ToString();
     }
 
     void ShowZoneChange(string zoneName)

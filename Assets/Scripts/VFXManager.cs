@@ -12,6 +12,7 @@ public class VFXManager : MonoBehaviour
     public ParticleSystem clickEffectPrefab;
     public ParticleSystem nearMissEffectPrefab;
     public ParticleSystem deathEffectPrefab;
+    public ParticleSystem shardCollectEffectPrefab;
 
     void Awake()
     {
@@ -41,6 +42,18 @@ public class VFXManager : MonoBehaviour
     public void SpawnDeathEffect(Vector3 position)
     {
         PlayParticle(deathEffectPrefab, position);
+    }
+
+    public void SpawnShardCollectEffect(Vector3 position)
+    {
+        if (shardCollectEffectPrefab != null)
+        {
+            PlayParticle(shardCollectEffectPrefab, position);
+        }
+        else if (clickEffectPrefab != null)
+        {
+            PlayParticle(clickEffectPrefab, position);
+        }
     }
 
     private void PlayParticle(ParticleSystem prefab, Vector3 position)
