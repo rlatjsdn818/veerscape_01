@@ -49,6 +49,12 @@ public class PlayerController : MonoBehaviour
     private bool isDead = false;
     private GameManager gm;
     private float playStartTime;
+    private SpriteRenderer[] spriteRenderers;
+
+    void Awake()
+    {
+        spriteRenderers = GetComponentsInChildren<SpriteRenderer>(true);
+    }
 
     void Start()
     {
@@ -66,6 +72,7 @@ public class PlayerController : MonoBehaviour
         }
 
         ApplyHitboxSize();
+        SetSpriteVisibility(true);
     }
 
     void OnDestroy()
@@ -102,6 +109,7 @@ public class PlayerController : MonoBehaviour
         transform.localScale = normalScale;
         playStartTime = Time.time;
         ApplyHitboxSize();
+        SetSpriteVisibility(true);
     }
 
     void HandleGameOver()
@@ -241,9 +249,29 @@ public class PlayerController : MonoBehaviour
     {
         isDead = true;
         if (VFXManager.Instance != null) VFXManager.Instance.SpawnDeathEffect(transform.position);
-        var rend = GetComponent<Renderer>();
-        if (rend != null) rend.enabled = false;
+
+        SetSpriteVisibility(false);
         gm.EndGame();
+    }
+
+    /// <summary>
+    /// 플레이어 본체의 스프라이트만 투명/비활성화합니다.
+    /// (파티클 시스템이나 자식 이펙트는 건드리지 않아 사망 시에도 파티클이 끊김 없이 정상 출력됩니다)
+    /// </summary>
+    public void SetSpriteVisibility(bool visible)
+    {
+        if (spriteRenderers == null || spriteRenderers.Length == 0)
+        {
+            spriteRenderers = GetComponentsInChildren<SpriteRenderer>(true);
+        }
+
+        foreach (var sr in spriteRenderers)
+        {
+            if (sr != null)
+            {
+                sr.enabled = visible;
+            }
+        }
     }
 
     /// <summary>게임 리트라이 시 비주얼 및 상태 리셋</summary>
@@ -254,9 +282,10 @@ public class PlayerController : MonoBehaviour
         isDead = false;
         gravityDirection = -1;
         verticalVelocity = 0f;
-        var rend = GetComponent<Renderer>();
-        if (rend != null) rend.enabled = true;
+
+
         ApplyHitboxSize();
+        SetSpriteVisibility(true);
     }
 
 #if UNITY_EDITOR

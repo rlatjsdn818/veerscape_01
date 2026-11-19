@@ -1444,6 +1444,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
     - target: {fileID: 140929953211346848, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
+      propertyPath: m_Parameters.colorGradient.m_Mode
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 140929953211346848, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
+      propertyPath: m_Parameters.colorGradient.m_ColorSpace
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 140929953211346848, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
       propertyPath: m_Parameters.widthCurve.m_Curve.Array.data[1].time
       value: 0.45493132
       objectReference: {fileID: 0}
@@ -1521,7 +1529,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8451322203389547247, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -1.67
+      value: -7.3
       objectReference: {fileID: 0}
     - target: {fileID: 8451322203389547247, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1879,10 +1887,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 05705356e37746b4ead5fde12c7cf9ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VFXManager
-  bounceEffectPrefab: {fileID: 0}
-  clickEffectPrefab: {fileID: 0}
-  nearMissEffectPrefab: {fileID: 0}
-  deathEffectPrefab: {fileID: 0}
+  bounceEffectPrefab: {fileID: 4271093393614929224, guid: 87ee7299dd44ed747af24dbb91bcd33b, type: 3}
+  clickEffectPrefab: {fileID: 8771972552311404798, guid: bbf9e36a48d6c5648a13889afab076fd, type: 3}
+  nearMissEffectPrefab: {fileID: 1429954232896169632, guid: 83036083a4ebcd34f98131bd3cf6f4d2, type: 3}
+  deathEffectPrefab: {fileID: 2708598583397607910, guid: 6398d43fe79ea0140913dc5530c646af, type: 3}
+  shardCollectEffectPrefab: {fileID: 0}
 --- !u!114 &716149007
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1899,6 +1908,7 @@ MonoBehaviour:
   clickClip: {fileID: 8300000, guid: 3fabc98696588f84593736226a8943d0, type: 3}
   nearMissClip: {fileID: 8300000, guid: 2c36f615d1204b1408af9f9d68f66827, type: 3}
   deathClip: {fileID: 8300000, guid: b3b6a276f83c5464c87640d82559e525, type: 3}
+  shardClip: {fileID: 0}
   sfxVolume: 1
 --- !u!114 &716149008
 MonoBehaviour:
@@ -1918,6 +1928,7 @@ MonoBehaviour:
   optionsPanel: {fileID: 1725594637}
   distanceText: {fileID: 1259151388}
   zoneChangeText: {fileID: 152224904}
+  shardCountText: {fileID: 0}
   bestDistanceText: {fileID: 578105376}
   startButton: {fileID: 246614684}
   optionsButton: {fileID: 1639721428}
@@ -1931,6 +1942,7 @@ MonoBehaviour:
   keybindStatusText: {fileID: 858834069}
   finalDistanceText: {fileID: 733486016}
   finalBestText: {fileID: 1253502339}
+  finalShardText: {fileID: 0}
   retryButton: {fileID: 110438342}
 --- !u!114 &716149009
 MonoBehaviour:
