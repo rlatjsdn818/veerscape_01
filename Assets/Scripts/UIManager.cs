@@ -41,11 +41,15 @@ public class UIManager : MonoBehaviour
     public TMP_Text finalDistanceText;
     public TMP_Text finalBestText;
     public TMP_Text finalShardText;
+    public Button restartButton;   // 바로 재시작 버튼
+    public Button toMenuButton;    // 타이틀 메뉴 복귀 버튼
+    [Tooltip("기존 인스펙터 호환용 (toMenuButton 미할당 시 대신 사용)")]
     public Button retryButton;
 
     private GameManager gm;
     private float zoneChangeTimer;
     private float titleShowTime;
+    private float gameOverTime;
     private bool isListeningForKey = false;
 
     void Awake()
@@ -69,9 +73,20 @@ public class UIManager : MonoBehaviour
             gm.OnShardCollected += UpdateShardUI;
         }
 
-        if (retryButton != null)
+        // 바로 재시작 버튼 연결
+        if (restartButton != null)
         {
-            retryButton.onClick.AddListener(OnRetryClicked);
+            restartButton.onClick.AddListener(OnRestartClicked);
+        }
+
+        // 메뉴 복귀 버튼 연결
+        if (toMenuButton != null)
+        {
+            toMenuButton.onClick.AddListener(OnToMenuClicked);
+        }
+        else if (retryButton != null)
+        {
+            retryButton.onClick.AddListener(OnToMenuClicked);
         }
 
         // 시작 버튼 연결 (타이틀 화면에서만 활성)
@@ -181,6 +196,23 @@ public class UIManager : MonoBehaviour
 
         if (gm == null) return;
 
+        // 게임오버 화면에서 바로 재시작 단축키 (0.25초 쿨다운 후 스페이스/R/엔터 또는 등록된 점프 키 입력 시 즉시 재시작)
+        if (gm.CurrentState == GameManager.GameState.GameOver && gameOverPanel != null && gameOverPanel.activeInHierarchy)
+        {
+            if (Time.unscaledTime - gameOverTime >= 0.25f)
+            {
+                bool quickRestart = Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.R);
+                if (!quickRestart && KeybindManager.Instance != null && KeybindManager.Instance.IsAnyKeyTriggered())
+                {
+                    quickRestart = true;
+                }
+
+                if (quickRestart)
+                {
+                    OnRestartClicked();
+                }
+            }
+        }
 
         // HUD: 거리 실시간 표시
         if (gm.CurrentState == GameManager.GameState.Playing)
@@ -437,7 +469,7 @@ public class UIManager : MonoBehaviour
     }
     #endregion
 
-            public void ShowTitle()
+    public void ShowTitle()
     {
         if (titlePanel != null) titlePanel.SetActive(true);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
@@ -469,6 +501,7 @@ public class UIManager : MonoBehaviour
 
     void ShowGameOver()
     {
+        gameOverTime = Time.unscaledTime;
         if (hudPanel != null) hudPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
         if (optionsPanel != null) optionsPanel.SetActive(false);
@@ -498,7 +531,31 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void OnRetryClicked()
+    /// <summary>
+    /// 게임오버 화면에서 바로 재시작: 타이틀 화면을 거치지 않고 즉시 게임을 다시 시작합니다.
+    /// </summary>
+    public void OnRestartClicked()
+    {
+        if (gm == null) return;
+        gm.RetryGame();
+
+        var player = FindAnyObjectByType<PlayerController>();
+        if (player != null) player.ResetVisual();
+
+        var trail = FindAnyObjectByType<TrailController>();
+        if (trail != null)
+        {
+            var tr = trail.GetComponent<TrailRenderer>();
+            if (tr != null) tr.Clear();
+        }
+
+        gm.StartGame();
+    }
+
+    /// <summary>
+    /// 게임오버 화면에서 타이틀 화면으로 복귀합니다.
+    /// </summary>
+    public void OnToMenuClicked()
     {
         if (gm == null) return;
         gm.RetryGame();
@@ -515,4 +572,9 @@ public class UIManager : MonoBehaviour
 
         ShowTitle();
     }
+
+    /// <summary>
+    /// 기존 호환용 메서드
+    /// </summary>
+    public void OnRetryClicked() => OnToMenuClicked();
 }
