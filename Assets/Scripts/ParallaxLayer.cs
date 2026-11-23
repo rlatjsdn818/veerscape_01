@@ -105,10 +105,26 @@ public class ParallaxLayer : MonoBehaviour
         SetupTiling();
     }
 
+    void Start()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGameStart += ResetTiles;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGameStart -= ResetTiles;
+        }
+    }
+
     /// <summary>
     /// 타일을 초기 위치로 되돌립니다.
     /// </summary>
-    void ResetTiles()
+    public void ResetTiles()
     {
         if (tileA != null)
         {

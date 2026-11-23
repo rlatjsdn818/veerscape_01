@@ -67,13 +67,34 @@ public class BGMManager : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
+    }
+
+    private void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        SubscribeToGameManager();
+    }
+
     void Start()
     {
-        // Start()는 모든 Awake() 이후에 실행되므로 GameManager가 이미 초기화됨
+        SubscribeToGameManager();
+    }
+
+    private void SubscribeToGameManager()
+    {
         var gm = GameManager.Instance;
         if (gm != null)
         {
+            gm.OnGameStart -= HandleGameStart;
             gm.OnGameStart += HandleGameStart;
+            gm.OnGameOver -= HandleGameOver;
             gm.OnGameOver += HandleGameOver;
         }
     }

@@ -58,6 +58,7 @@ public class GameManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Time.timeScale = 1f;
         BestDistance = PlayerPrefs.GetFloat("VeerscapeBest", 0f);
         TotalShards = PlayerPrefs.GetInt("VeerscapeShards", 0);
     }

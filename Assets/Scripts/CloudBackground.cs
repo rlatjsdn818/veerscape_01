@@ -85,6 +85,41 @@ public class CloudBackground : MonoBehaviour
         }
 
         InitializeClouds();
+
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            gm.OnGameStart += ResetClouds;
+        }
+    }
+
+    void OnDestroy()
+    {
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            gm.OnGameStart -= ResetClouds;
+        }
+    }
+
+    /// <summary>
+    /// 게임 시작 시 구름들의 위치를 현재 카메라 기준으로 재배치합니다.
+    /// </summary>
+    public void ResetClouds()
+    {
+        if (cam == null) cam = Camera.main;
+        if (cam != null) prevCamX = cam.transform.position.x;
+
+        float camX = cam != null ? cam.transform.position.x : 0f;
+        float screenLeft = camX - 16f;
+        float screenRight = camX + 22f;
+
+        for (int i = 0; i < clouds.Count; i++)
+        {
+            if (clouds[i] == null || clouds[i].obj == null) continue;
+            float startX = Mathf.Lerp(screenLeft, screenRight, (float)i / cloudCount) + Random.Range(-1.5f, 1.5f);
+            RandomizeCloud(clouds[i], startX);
+        }
     }
 
     /// <summary>

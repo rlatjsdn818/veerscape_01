@@ -84,6 +84,11 @@ public class KeybindManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// IsActionTriggered의 별칭 (호환성 유지용)
+    /// </summary>
+    public bool IsAnyKeyTriggered() => IsActionTriggered();
+
     public static bool IsMouseButton(KeyCode key)
     {
         return key == KeyCode.Mouse0 || key == KeyCode.Mouse1 || key == KeyCode.Mouse2

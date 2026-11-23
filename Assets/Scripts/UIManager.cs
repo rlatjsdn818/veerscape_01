@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
@@ -52,6 +53,9 @@ public class UIManager : MonoBehaviour
     private float gameOverTime;
     private bool isListeningForKey = false;
 
+    // 씬 재로드 후 곧바로 게임을 시작할지 여부
+    private static bool autoStartNextRun = false;
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -62,7 +66,7 @@ public class UIManager : MonoBehaviour
         Instance = this;
     }
 
-    void Start()
+    System.Collections.IEnumerator Start()
     {
         gm = GameManager.Instance;
         if (gm != null)
@@ -112,7 +116,27 @@ public class UIManager : MonoBehaviour
         // 키바인딩 UI 초기화 및 이벤트 연결
         InitKeybindUI();
 
-        ShowTitle();
+        if (autoStartNextRun)
+        {
+            // 재시작 시 타이틀 패널 깜빡임 방지 및 HUD 선표시
+            if (titlePanel != null) titlePanel.SetActive(false);
+            if (gameOverPanel != null) gameOverPanel.SetActive(false);
+            if (optionsPanel != null) optionsPanel.SetActive(false);
+            if (hudPanel != null) hudPanel.SetActive(true);
+
+            // 다른 모든 스크립트(PlayerController, CameraController 등)의 Start()가 완료되도록 1프레임 대기
+            yield return null;
+
+            autoStartNextRun = false;
+            if (gm != null)
+            {
+                gm.StartGame();
+            }
+        }
+        else
+        {
+            ShowTitle();
+        }
     }
 
     private void InitOptionsSliders()
@@ -202,7 +226,7 @@ public class UIManager : MonoBehaviour
             if (Time.unscaledTime - gameOverTime >= 0.25f)
             {
                 bool quickRestart = Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.R);
-                if (!quickRestart && KeybindManager.Instance != null && KeybindManager.Instance.IsAnyKeyTriggered())
+                if (!quickRestart && KeybindManager.Instance != null && KeybindManager.Instance.IsActionTriggered())
                 {
                     quickRestart = true;
                 }
@@ -532,45 +556,23 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 게임오버 화면에서 바로 재시작: 타이틀 화면을 거치지 않고 즉시 게임을 다시 시작합니다.
+    /// 게임오버 화면에서 바로 재시작: 씬을 완전히 새로고침하여 배경, 구름, 장애물, 카메라 등을 깨끗하게 초기화하고 즉시 게임을 다시 시작합니다.
     /// </summary>
     public void OnRestartClicked()
     {
-        if (gm == null) return;
-        gm.RetryGame();
-
-        var player = FindAnyObjectByType<PlayerController>();
-        if (player != null) player.ResetVisual();
-
-        var trail = FindAnyObjectByType<TrailController>();
-        if (trail != null)
-        {
-            var tr = trail.GetComponent<TrailRenderer>();
-            if (tr != null) tr.Clear();
-        }
-
-        gm.StartGame();
+        Time.timeScale = 1f;
+        autoStartNextRun = true;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     /// <summary>
-    /// 게임오버 화면에서 타이틀 화면으로 복귀합니다.
+    /// 게임오버 화면에서 타이틀 화면으로 복귀합니다: 씬을 새로고침하여 깨끗한 상태의 타이틀 화면으로 이동합니다.
     /// </summary>
     public void OnToMenuClicked()
     {
-        if (gm == null) return;
-        gm.RetryGame();
-
-        var player = FindAnyObjectByType<PlayerController>();
-        if (player != null) player.ResetVisual();
-
-        var trail = FindAnyObjectByType<TrailController>();
-        if (trail != null)
-        {
-            var tr = trail.GetComponent<TrailRenderer>();
-            if (tr != null) tr.Clear();
-        }
-
-        ShowTitle();
+        Time.timeScale = 1f;
+        autoStartNextRun = false;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     /// <summary>
