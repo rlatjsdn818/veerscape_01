@@ -39,6 +39,21 @@ public class PlayerController : MonoBehaviour
     [Range(0.3f, 1.5f)]
     public float hitboxScale = 0.85f;
 
+    [Header("Entrance Settings")]
+    [Tooltip("게임 시작 시 화면 밖 등장 연출 사용 여부")]
+    public bool enableEntranceAnimation = true;
+    [Tooltip("게임 시작 시 플레이어가 등장하는 화면 밖 시작 X 좌표")]
+    public float offscreenStartX = -12f;
+    [Tooltip("등장 완료 후 게임이 진행되는 기준 플레이어 X 좌표")]
+    public float playPositionX = -6f;
+    [Tooltip("화면 밖에서 기준 위치까지 이동하는 시간(초)")]
+    public float entranceDuration = 0.8f;
+
+    private bool isEntering = false;
+    private float entranceTimer = 0f;
+
+    public bool IsEntering => isEntering;
+
     // 현재 수직 속도
     private float verticalVelocity = 0f;
 
@@ -103,13 +118,27 @@ public class PlayerController : MonoBehaviour
     void HandleGameStart()
     {
         isDead = false;
-        transform.position = new Vector3(-6f, 0f, 0f);
+        transform.localScale = normalScale;
         gravityDirection = -1; // 시작 시 아래(바닥) 중력
         verticalVelocity = 0f;
-        transform.localScale = normalScale;
-        playStartTime = Time.time;
         ApplyHitboxSize();
         SetSpriteVisibility(true);
+
+        if (enableEntranceAnimation)
+        {
+            isEntering = true;
+            entranceTimer = 0f;
+            transform.position = new Vector3(offscreenStartX, 0f, 0f);
+
+            var trail = GetComponent<TrailRenderer>();
+            if (trail != null) trail.Clear();
+        }
+        else
+        {
+            isEntering = false;
+            transform.position = new Vector3(playPositionX, 0f, 0f);
+            playStartTime = Time.time;
+        }
     }
 
     void HandleGameOver()
@@ -120,6 +149,27 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         if (gm == null || gm.CurrentState != GameManager.GameState.Playing || isDead) return;
+
+        // 0. 화면 밖 등장 연출 처리
+        if (isEntering)
+        {
+            entranceTimer += Time.deltaTime;
+            float t = Mathf.Clamp01(entranceTimer / Mathf.Max(0.01f, entranceDuration));
+            // Ease-Out Sine: 화면 밖에서 속도감 있게 등장하여 playPositionX 위치로 부드럽게 감속 정착
+            float smoothT = Mathf.Sin(t * Mathf.PI * 0.5f);
+            float currentX = Mathf.Lerp(offscreenStartX, playPositionX, smoothT);
+            transform.position = new Vector3(currentX, 0f, 0f);
+
+            if (t >= 1f)
+            {
+                isEntering = false;
+                transform.position = new Vector3(playPositionX, 0f, 0f);
+                playStartTime = Time.time;
+                verticalVelocity = 0f;
+                if (gm != null) gm.ResetDistance();
+            }
+            return; // 등장 중에는 수직 바운스 및 조작 입력 무시
+        }
 
         // 1. 등록된 키(좌클릭, 스페이스바 등)로 중력 반전 (궤도 전환)
         // 시작 직후 0.1초 및 UI 터치는 무시
@@ -230,7 +280,7 @@ public class PlayerController : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (isDead || gm == null) return;
+        if (isDead || isEntering || gm == null) return;
 
         // 사망 영역 (ObstacleKillZone) 충돌 체크: 킬존 접촉 시 즉시 사망
         var killZone = other.GetComponent<ObstacleKillZone>();
@@ -247,6 +297,7 @@ public class PlayerController : MonoBehaviour
 
     void Die()
     {
+        if (isDead || isEntering) return;
         isDead = true;
         if (VFXManager.Instance != null) VFXManager.Instance.SpawnDeathEffect(transform.position);
 
@@ -277,12 +328,12 @@ public class PlayerController : MonoBehaviour
     /// <summary>게임 리트라이 시 비주얼 및 상태 리셋</summary>
     public void ResetVisual()
     {
-        transform.position = new Vector3(-6f, 0f, 0f);
+        isEntering = false;
+        transform.position = new Vector3(playPositionX, 0f, 0f);
         transform.localScale = normalScale;
         isDead = false;
         gravityDirection = -1;
         verticalVelocity = 0f;
-
 
         ApplyHitboxSize();
         SetSpriteVisibility(true);

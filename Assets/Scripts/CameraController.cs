@@ -14,6 +14,12 @@ public class CameraController : MonoBehaviour
     [Tooltip("기본 카메라 시야 크기 (고정)")]
     public float defaultOrthoSize = 5f;
 
+    [Header("Follow Settings")]
+    [Tooltip("플레이어 위치 기준 카메라 X 오프셋 (기본 6: 플레이어가 화면 왼쪽에 안정적으로 배치됨)")]
+    public float targetOffsetX = 6f;
+    [Tooltip("게임 시작 시 카메라 고정 최소 X 좌표 (플레이어가 등장 완료할 때까지 카메라 고정)")]
+    public float minCameraX = 0f;
+
     [Header("Shake Settings")]
     [Tooltip("장애물(가시/톱니바퀴) Near Miss 시 가벼운 쉐이크 강도")]
     public float nearMissShakeIntensity = 0.08f;
@@ -72,12 +78,15 @@ public class CameraController : MonoBehaviour
     {
         if (target == null)
         {
-            var p = FindObjectOfType<PlayerController>();
+            var p = FindAnyObjectByType<PlayerController>();
             if (p != null) target = p.transform;
         }
         else
         {
-            basePosition = new Vector3(target.position.x + 6f, 0, -10f);
+            // 플레이어가 화면 밖(-12)에서 등장하여 기준 위치(-6)에 오기 전까지는 카메라는 minCameraX(0)에 고정됩니다.
+            // 플레이어가 기준 위치(-6)에 도달해 앞으로 전진하기 시작하면 카메라가 부드럽게 추적합니다.
+            float targetCamX = Mathf.Max(minCameraX, target.position.x + targetOffsetX);
+            basePosition = new Vector3(targetCamX, 0f, -10f);
         }
 
         HandleShake();
@@ -125,6 +134,7 @@ public class CameraController : MonoBehaviour
     void HandleGameStart()
     {
         shakeTimer = 0f;
+        basePosition = new Vector3(minCameraX, 0f, -10f);
         transform.position = basePosition;
         if (cam != null) cam.orthographicSize = defaultOrthoSize;
     }
