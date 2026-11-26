@@ -202,7 +202,7 @@ public class BackgroundController : MonoBehaviour
 
         if (GameManager.Instance != null)
         {
-            isPlaying = GameManager.Instance.CurrentState == GameManager.GameState.Playing;
+            isPlaying = GameManager.Instance.CurrentState == GameManager.GameState.Playing && !GameManager.Instance.IsPlayerEntering;
             currentSpeed = GameManager.Instance.CurrentScrollSpeed;
         }
 

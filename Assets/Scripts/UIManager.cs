@@ -30,6 +30,7 @@ public class UIManager : MonoBehaviour
     public Slider bgmSlider; // BGM 볼륨 조절 슬라이더
     public Slider sfxSlider; // SFX 볼륨 조절 슬라이더
     public Button optionsCloseButton; // 옵션 창 닫기 버튼
+    public Button resetScoreButton; // 최고 기록 및 리더보드 초기화 버튼
 
     [Header("Keybind Elements (Dynamic List / No Prefab Asset Required)")]
     public Transform keyContainer;        // 키 아이템들이 나열될 부모 (Layout Group 등)
@@ -154,6 +155,11 @@ public class UIManager : MonoBehaviour
             sfxSlider.value = sfxVol;
             sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
         }
+
+        if (resetScoreButton != null)
+        {
+            resetScoreButton.onClick.AddListener(OnResetScoreClicked);
+        }
     }
 
     private void OnBGMVolumeChanged(float value)
@@ -169,6 +175,22 @@ public class UIManager : MonoBehaviour
         if (SFXManager.Instance != null)
         {
             SFXManager.Instance.SetVolume(value);
+        }
+    }
+
+    public void OnResetScoreClicked()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.ResetBestDistance();
+        }
+        if (LeaderboardManager.Instance != null)
+        {
+            LeaderboardManager.Instance.ClearLeaderboard();
+        }
+        if (bestDistanceText != null)
+        {
+            bestDistanceText.text = "";
         }
     }
 
@@ -533,7 +555,12 @@ public class UIManager : MonoBehaviour
         if (finalDistanceText != null)
             finalDistanceText.text = Mathf.FloorToInt(gm.Distance) + "m";
         if (finalBestText != null)
-            finalBestText.text = "BEST: " + Mathf.FloorToInt(gm.BestDistance) + "m";
+        {
+            if (gm != null && gm.IsCheatUsed)
+                finalBestText.text = "BEST: " + Mathf.FloorToInt(gm.BestDistance) + "m <color=#FF5555>(CHEAT USED)</color>";
+            else
+                finalBestText.text = "BEST: " + Mathf.FloorToInt(gm.BestDistance) + "m";
+        }
         if (finalShardText != null && gm != null)
             finalShardText.text = "SHARDS: " + gm.ShardsCollected;
     }

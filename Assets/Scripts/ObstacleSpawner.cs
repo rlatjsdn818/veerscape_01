@@ -78,7 +78,7 @@ public class ObstacleSpawner : MonoBehaviour
 
     void Update()
     {
-        if (gm == null || gm.CurrentState != GameManager.GameState.Playing) return;
+        if (gm == null || gm.CurrentState != GameManager.GameState.Playing || gm.IsPlayerEntering) return;
 
         spawnTimer -= Time.deltaTime;
         if (spawnTimer <= 0f)

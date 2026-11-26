@@ -179,6 +179,9 @@ public class ParallaxLayer : MonoBehaviour
                 ResetTiles();
             }
             lastKnownState = currentState;
+
+            // 플레이어 등장(Entrance) 중에는 배경 완전히 정지
+            if (GameManager.Instance.IsPlayerEntering) return;
         }
 
         float scrollSpeed = GetCurrentScrollSpeed();

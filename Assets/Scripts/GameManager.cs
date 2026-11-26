@@ -20,8 +20,10 @@ public class GameManager : MonoBehaviour
     // ── 상태 ──
     public GameState CurrentState { get; private set; } = GameState.Title;
     public float Distance { get; private set; }
-    // 플레이어 입장 연출 중 여부 (배경 파럴랙스 정지용)
+    // 플레이어 입장 연출 중 여부 (배경 패럴랙스 정지용)
     public bool IsPlayerEntering { get; private set; }
+    // 치트(디버그 스킵 등) 사용 여부 (사용 시 하이스코어 및 리더보드 반영 차단)
+    public bool IsCheatUsed { get; private set; }
     public float BestDistance { get; private set; }
     public float CurrentScrollSpeed { get; private set; }
 
@@ -57,17 +59,24 @@ public class GameManager : MonoBehaviour
     public List<Obstacle> ActiveObstacles = new List<Obstacle>();
 
     void Awake()
-{
-    if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-    Instance = this;
-    Time.timeScale = 1f;
-    BestDistance = PlayerPrefs.GetFloat("VeerscapeBest", 0f);
-    TotalShards = PlayerPrefs.GetInt("VeerscapeShards", 0);
-}
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        Time.timeScale = 1f;
+        BestDistance = PlayerPrefs.GetFloat("VeerscapeBest", 0f);
+        TotalShards = PlayerPrefs.GetInt("VeerscapeShards", 0);
+    }
 
     void Update()
-{
+    {
         if (CurrentState != GameState.Playing) return;
+
+        // 플레이어 화면 밖 등장 연출 중에는 이동 거리 증가 및 스크롤 속도를 0으로 유지 (배경 완전 정지)
+        if (IsPlayerEntering)
+        {
+            CurrentScrollSpeed = 0f;
+            return;
+        }
 
         // 거리 갱신
         Distance += CurrentScrollSpeed * Time.deltaTime;
@@ -84,13 +93,13 @@ public class GameManager : MonoBehaviour
 
         // 부스트 감쇠 (급격한 단차 없이 매끄럽게 감속)
         if (boostTimer > 0f)
-    
+        {
             boostTimer -= Time.deltaTime;
             float t = Mathf.Clamp01(boostTimer / Mathf.Max(0.001f, boostDuration));
             float smoothT = t * t * (3f - 2f * t); // SmoothStep 감쇠
             boostSpeedAdd = boostInitialAmount * smoothT;
             if (boostTimer <= 0f)
-        
+            {
                 boostSpeedAdd = 0f;
             }
         }
@@ -98,14 +107,14 @@ public class GameManager : MonoBehaviour
 
         // 무적 감쇠
         if (invincibilityTimer > 0f)
-    
+        {
             invincibilityTimer -= Time.deltaTime;
             if (invincibilityTimer <= 0f) IsInvincible = false;
         }
 
         // 콤보 리셋 타이머
         if (NearMissCombo > 0)
-    
+        {
             comboResetTimer -= Time.deltaTime;
             if (comboResetTimer <= 0f) NearMissCombo = 0;
         }
@@ -117,7 +126,7 @@ public class GameManager : MonoBehaviour
     private readonly float[] zoneDistances = new float[] { 0f, 400f, 900f, 1500f, 2300f };
 
     private void CheckDebugZoneSkip()
-
+    {
         // PageUp: 다음 구간으로 즉시 스킵
         bool pageUp = Input.GetKeyDown(KeyCode.PageUp);
         // PageDown: 이전 구간으로 즉시 스킵
@@ -125,55 +134,59 @@ public class GameManager : MonoBehaviour
 
 #if ENABLE_INPUT_SYSTEM
         if (UnityEngine.InputSystem.Keyboard.current != null)
-    
+        {
             if (UnityEngine.InputSystem.Keyboard.current.pageUpKey.wasPressedThisFrame) pageUp = true;
             if (UnityEngine.InputSystem.Keyboard.current.pageDownKey.wasPressedThisFrame) pageDown = true;
         }
 #endif
 
         if (pageUp)
-    
+        {
             JumpToNextZone();
         }
         else if (pageDown)
-    
+        {
             JumpToPreviousZone();
         }
     }
 
     private void JumpToNextZone()
-
+    {
+        IsCheatUsed = true;
         for (int i = 0; i < zoneDistances.Length; i++)
-    
+        {
             if (zoneDistances[i] > Distance + 1f)
-        
+            {
                 Distance = zoneDistances[i];
-                Debug.Log($"[Debug] Jumped forward to Zone: {DifficultyConfig.GetTier(Distance).zoneName} ({Distance}m)");
+                Debug.Log($"[Debug/Cheat] Jumped forward to Zone: {DifficultyConfig.GetTier(Distance).zoneName} ({Distance}m) - Highscore disabled");
                 return;
             }
         }
     }
 
     private void JumpToPreviousZone()
-
+    {
+        IsCheatUsed = true;
         for (int i = zoneDistances.Length - 1; i >= 0; i--)
-    
+        {
             if (zoneDistances[i] < Distance - 1f)
-        
+            {
                 Distance = zoneDistances[i];
-                Debug.Log($"[Debug] Jumped backward to Zone: {DifficultyConfig.GetTier(Distance).zoneName} ({Distance}m)");
+                Debug.Log($"[Debug/Cheat] Jumped backward to Zone: {DifficultyConfig.GetTier(Distance).zoneName} ({Distance}m) - Highscore disabled");
                 return;
             }
         }
-    
+        Distance = 0f;
+    }
     #endregion
 
     // ── Public API ──
 
     public void StartGame()
-
+    {
         CurrentState = GameState.Playing;
         Distance = 0f;
+        IsCheatUsed = false;
         NearMissCombo = 0;
         ShardsCollected = 0;
         boostTimer = 0f;
@@ -189,30 +202,49 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 이동 거리(Distance)를 0으로 리셋합니다. (플레이어 등장 연출 완료 시점 등에 호출)
+    /// 플레이어 등장(Entrance) 중 여부 설정 (true인 동안에는 배경 및 스크롤 완전 정지)
     /// </summary>
-    public void ResetDistance()
-
-        Distance = 0f;
-        // entrance 연출이 끝났으므로 배경 스크롤 재개
-        SetPlayerEntering(false);
-    }
-
-    // 입장 연출 시작/종료 플래그 제어
     public void SetPlayerEntering(bool entering)
     {
         IsPlayerEntering = entering;
+        if (entering)
+        {
+            CurrentScrollSpeed = 0f;
+        }
+        else
+        {
+            var tier = DifficultyConfig.GetTier(Distance);
+            CurrentScrollSpeed = tier.scrollSpeed * scrollSpeedMultiplier;
+        }
     }
 
-    
+    /// <summary>
+    /// 이동 거리(Distance)를 0으로 리셋합니다. (플레이어 등장 연출 완료 시점 등에 호출)
+    /// </summary>
+    public void ResetDistance()
+    {
+        Distance = 0f;
+        SetPlayerEntering(false);
+    }
+
+    /// <summary>
+    /// 최고 기록(Best Distance)을 0으로 초기화합니다.
+    /// </summary>
+    public void ResetBestDistance()
+    {
+        BestDistance = 0f;
+        PlayerPrefs.DeleteKey("VeerscapeBest");
+        PlayerPrefs.Save();
+        Debug.Log("[GameManager] Best Distance reset to 0m.");
+    }
 
     public void EndGame()
-
+    {
         if (CurrentState != GameState.Playing) return;
         CurrentState = GameState.GameOver;
 
-        if (Distance > BestDistance)
-    
+        if (!IsCheatUsed && Distance > BestDistance)
+        {
             BestDistance = Distance;
             PlayerPrefs.SetFloat("VeerscapeBest", BestDistance);
             PlayerPrefs.Save();
@@ -224,10 +256,10 @@ public class GameManager : MonoBehaviour
     }
 
     public void RetryGame()
-
+    {
         // 모든 활성 장애물 제거
         for (int i = ActiveObstacles.Count - 1; i >= 0; i--)
-    
+        {
             if (ActiveObstacles[i] != null) Destroy(ActiveObstacles[i].gameObject);
         }
         ActiveObstacles.Clear();
@@ -236,7 +268,7 @@ public class GameManager : MonoBehaviour
     }
 
     public void ApplyBoost(float additionalSpeed, float duration)
-
+    {
         boostInitialAmount = additionalSpeed;
         boostDuration = duration;
         boostTimer = duration;
@@ -248,7 +280,7 @@ public class GameManager : MonoBehaviour
     /// (프레임 드랍처럼 느껴지는 HitStop과 장애물 통과를 유발하는 무적 버그 제거)
     /// </summary>
     public void TriggerNearMiss()
-
+    {
         NearMissCombo++;
         comboResetTimer = COMBO_RESET_TIME;
 
@@ -267,7 +299,7 @@ public class GameManager : MonoBehaviour
     /// 노란색 샤드(코인) 획득 처리
     /// </summary>
     public void CollectShard(int amount = 1)
-
+    {
         ShardsCollected += amount;
         TotalShards += amount;
         PlayerPrefs.SetInt("VeerscapeShards", TotalShards);
@@ -275,12 +307,12 @@ public class GameManager : MonoBehaviour
     }
 
     public void TriggerHitStop(float duration)
-
+    {
         StartCoroutine(HitStopRoutine(duration));
     }
 
     private System.Collections.IEnumerator HitStopRoutine(float duration)
-
+    {
         Time.timeScale = 0.01f;
         yield return new WaitForSecondsRealtime(duration);
         Time.timeScale = 1f;

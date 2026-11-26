@@ -167,6 +167,12 @@ public class CloudBackground : MonoBehaviour
         float camDeltaX = cam.transform.position.x - prevCamX;
         prevCamX = cam.transform.position.x;
 
+        // 플레이어 등장(Entrance) 중에는 구름 배경 완전 정지
+        if (GameManager.Instance != null && GameManager.Instance.IsPlayerEntering)
+        {
+            return;
+        }
+
         // ★ 핵심: 구름이 카메라를 따라가면서, 화면 기준으로는 오직 cloudSpeed 만큼만 은은하게 뒤로 흐름
         // (플레이어가 아무리 빠르게 질주해도 구름이 휭 날아가지 않고 항상 느긋하게 흐릅니다)
         float moveX = camDeltaX - (cloudSpeed * Time.deltaTime);

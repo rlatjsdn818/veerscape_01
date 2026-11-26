@@ -127,6 +127,7 @@ public class PlayerController : MonoBehaviour
         if (enableEntranceAnimation)
         {
             isEntering = true;
+            if (gm != null) gm.SetPlayerEntering(true);
             entranceTimer = 0f;
             transform.position = new Vector3(offscreenStartX, 0f, 0f);
 
@@ -136,6 +137,7 @@ public class PlayerController : MonoBehaviour
         else
         {
             isEntering = false;
+            if (gm != null) gm.SetPlayerEntering(false);
             transform.position = new Vector3(playPositionX, 0f, 0f);
             playStartTime = Time.time;
         }
