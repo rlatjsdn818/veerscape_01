@@ -1210,6 +1210,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   defaultOrthoSize: 5
+  targetOffsetX: 6
+  minCameraX: 0
   nearMissShakeIntensity: 0.1
   nearMissShakeDuration: 0.15
   deathShakeIntensity: 0.3
@@ -1783,11 +1785,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8451322203389547247, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -5.18
+      value: -8.98
       objectReference: {fileID: 0}
     - target: {fileID: 8451322203389547247, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -7.3
+      value: -8.37
       objectReference: {fileID: 0}
     - target: {fileID: 8451322203389547247, guid: 63dd5ec9b6be34446b5306dd9c31283c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2193,6 +2195,7 @@ MonoBehaviour:
   bgmSlider: {fileID: 1813583212}
   sfxSlider: {fileID: 1118359727}
   optionsCloseButton: {fileID: 185620914}
+  resetScoreButton: {fileID: 0}
   keyContainer: {fileID: 2399363}
   keyItemTemplate: {fileID: 494344018}
   addKeyButton: {fileID: 855560718}
@@ -3371,6 +3374,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   defaultOrthoSize: 5
+  targetOffsetX: 6
+  minCameraX: 0
   nearMissShakeIntensity: 0.1
   nearMissShakeDuration: 0.15
   deathShakeIntensity: 0.3
